@@ -6,4 +6,17 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Colores Institucionales SIMIC */
+    --color-brand-navy: #0b2239;
+    --color-brand-navy-dark: #071626;
+    --color-brand-navy-light: #163756;
+    --color-brand-teal: #0d9488;
+    --color-brand-teal-light: #14b8a6;
+    --color-brand-sky: #0284c7;
+
+    /* Superficies y Fondos */
+    --color-surface-canvas: #f8fafc;
+    --color-surface-card: #ffffff;
+    --color-surface-subtle: #f1f5f9;
 }
