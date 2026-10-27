@@ -76,7 +76,55 @@ class User extends Authenticatable
      */
     public function hasRol(string $nombreRol): bool
     {
-        return $this->roles->contains('nombre_rol', $nombreRol);
+        return $this->roles->contains(function (Rol $rol) use ($nombreRol): bool {
+            return mb_strtolower(trim($rol->nombre_rol)) === mb_strtolower(trim($nombreRol));
+        });
+    }
+
+    /**
+     * Check if the user has any of the specified roles.
+     *
+     * @param  list<string>  $roles
+     */
+    public function hasAnyRol(array $roles): bool
+    {
+        $normalized = array_map(static fn (string $rol): string => mb_strtolower(trim($rol)), $roles);
+
+        return $this->roles->contains(function (Rol $rol) use ($normalized): bool {
+            return in_array(mb_strtolower(trim($rol->nombre_rol)), $normalized, true);
+        });
+    }
+
+    /**
+     * Determine if the user has administrative privileges.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->hasAnyRol(['Administrador', 'Admin']);
+    }
+
+    /**
+     * Determine if the user has coordinator privileges.
+     */
+    public function isCoordinador(): bool
+    {
+        return $this->isAdmin() || $this->hasAnyRol(['Coordinador', 'Coordinación']) || $this->email_tipo === 'coordinador';
+    }
+
+    /**
+     * Determine if the user is a technician.
+     */
+    public function isTecnico(): bool
+    {
+        return $this->hasAnyRol(['Tecnico', 'Técnico', 'Cuadrilla']) || $this->email_tipo === 'tecnico';
+    }
+
+    /**
+     * Determine if the user belongs to warehouse staff.
+     */
+    public function isAlmacen(): bool
+    {
+        return $this->hasAnyRol(['Almacen', 'Almacén', 'Almacenista']) || $this->email_tipo === 'almacen';
     }
 
     /**
