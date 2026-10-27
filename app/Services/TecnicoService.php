@@ -124,7 +124,7 @@ class TecnicoService
         $tareasIncompletas = $orden->tareas()->where('completada', false)->count();
         if ($tareasIncompletas > 0) {
             throw new BusinessRuleException(
-                "Cierre rechazado: Hay {$tareasIncompletas} tarea(s) pendientes de marcar como completadas en la orden."
+                "Cierre rechazado: Hay {$tareasIncompletas} tareas pendientes de marcar como completadas en la orden."
             );
         }
 

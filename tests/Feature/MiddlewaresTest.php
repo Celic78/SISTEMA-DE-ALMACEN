@@ -40,8 +40,10 @@ class MiddlewaresTest extends TestCase
             return response()->json(['status' => 'ok']);
         })->middleware('email.tipo:alumno,profesor');
 
-        Route::get('/test-orden-tecnico/{orden}', function (OrdenTrabajo $orden) {
-            return response()->json(['orden' => $orden->id_orden]);
+        Route::get('/test-orden-tecnico/{orden}', function ($orden) {
+            $id = $orden instanceof OrdenTrabajo ? $orden->id_orden : (int) $orden;
+
+            return response()->json(['orden' => $id]);
         })->middleware('tecnico.asignado');
 
         Route::get('/test-solicitud-owner/{solicitud}', function (Solicitud $solicitud) {
@@ -134,7 +136,7 @@ class MiddlewaresTest extends TestCase
     {
         $plantel = Plantel::create(['nombre' => 'Plantel Sur', 'direccion' => 'Calle 1']);
         $edificio = $plantel->edificios()->create(['nombre' => 'Edificio B']);
-        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Aula 101', 'tipo_espacio' => 'Aula']);
+        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Aula 101', 'tipo_espacio' => 'Aula', 'piso' => 'Planta Baja']);
         $categoria = CategoriaSolicitud::create(['nombre_categoria' => 'Redes']);
         $prioridad = MatrizPrioridad::create(['nivel' => 'Media', 'tiempo_respuesta_hrs' => 48]);
 
@@ -178,7 +180,7 @@ class MiddlewaresTest extends TestCase
     {
         $plantel = Plantel::create(['nombre' => 'Plantel Norte', 'direccion' => 'Calle 2']);
         $edificio = $plantel->edificios()->create(['nombre' => 'Edificio C']);
-        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Aula 202', 'tipo_espacio' => 'Aula']);
+        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Aula 202', 'tipo_espacio' => 'Aula', 'piso' => 'Piso 2']);
         $categoria = CategoriaSolicitud::create(['nombre_categoria' => 'Iluminación']);
         $prioridad = MatrizPrioridad::create(['nivel' => 'Baja', 'tiempo_respuesta_hrs' => 72]);
 
@@ -210,7 +212,7 @@ class MiddlewaresTest extends TestCase
     {
         $plantel = Plantel::create(['nombre' => 'Plantel Poniente', 'direccion' => 'Calle 3']);
         $edificio = $plantel->edificios()->create(['nombre' => 'Edificio D']);
-        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Taller 1', 'tipo_espacio' => 'Taller']);
+        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Taller 1', 'tipo_espacio' => 'Taller', 'piso' => 'Planta Baja']);
         $categoria = CategoriaSolicitud::create(['nombre_categoria' => 'Estructural']);
         $prioridad = MatrizPrioridad::create(['nivel' => 'Alta', 'tiempo_respuesta_hrs' => 24]);
 

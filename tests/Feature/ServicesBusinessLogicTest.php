@@ -106,6 +106,7 @@ class ServicesBusinessLogicTest extends TestCase
         $espacioEdificio2 = $edificio2->espacios()->create([
             'nombre_espacio' => 'Laboratorio Cómputo 2',
             'tipo_espacio' => 'Laboratorio',
+            'piso' => 'Planta Baja',
         ]);
 
         $this->expectException(BusinessRuleException::class);
@@ -122,7 +123,7 @@ class ServicesBusinessLogicTest extends TestCase
     {
         $plantel = Plantel::create(['nombre' => 'Campus Norte', 'direccion' => 'Av. Norte']);
         $edificio = $plantel->edificios()->create(['nombre' => 'Edificio A']);
-        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Aula 101', 'tipo_espacio' => 'Aula']);
+        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Aula 101', 'tipo_espacio' => 'Aula', 'piso' => 'Piso 1']);
         $categoria = CategoriaSolicitud::create(['nombre_categoria' => 'Plomería']);
         $prioridad = MatrizPrioridad::create(['nivel' => 'Media', 'tiempo_respuesta_hrs' => 24]);
 
@@ -158,7 +159,7 @@ class ServicesBusinessLogicTest extends TestCase
     {
         $plantel = Plantel::create(['nombre' => 'Campus Sur', 'direccion' => 'Av. Sur']);
         $edificio = $plantel->edificios()->create(['nombre' => 'Edificio 1']);
-        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Baño Hombres', 'tipo_espacio' => 'Baño']);
+        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Baño Hombres', 'tipo_espacio' => 'Baño', 'piso' => 'Planta Baja']);
         $categoria = CategoriaSolicitud::create(['nombre_categoria' => 'Plomería']);
         $prioridad = MatrizPrioridad::create(['nivel' => 'Alta', 'tiempo_respuesta_hrs' => 12]);
 
@@ -241,7 +242,7 @@ class ServicesBusinessLogicTest extends TestCase
     {
         $plantel = Plantel::create(['nombre' => 'Campus Tech', 'direccion' => 'Av. Tech']);
         $edificio = $plantel->edificios()->create(['nombre' => 'Edificio C']);
-        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Taller Electrónico', 'tipo_espacio' => 'Taller']);
+        $espacio = $edificio->espacios()->create(['nombre_espacio' => 'Taller Electrónico', 'tipo_espacio' => 'Taller', 'piso' => 'Planta Baja']);
         $categoria = CategoriaSolicitud::create(['nombre_categoria' => 'Electricidad']);
         $prioridad = MatrizPrioridad::create(['nivel' => 'Alta', 'tiempo_respuesta_hrs' => 12]);
 
@@ -444,7 +445,10 @@ class ServicesBusinessLogicTest extends TestCase
     {
         $plantel = Plantel::firstOrCreate(['nombre' => 'Plantel Base'], ['direccion' => 'Calle Principal']);
         $edificio = $plantel->edificios()->firstOrCreate(['nombre' => 'Edificio 1']);
-        $espacio = $edificio->espacios()->firstOrCreate(['nombre_espacio' => 'Espacio 1'], ['tipo_espacio' => 'Aula']);
+        $espacio = $edificio->espacios()->firstOrCreate(
+            ['nombre_espacio' => 'Espacio 1'],
+            ['tipo_espacio' => 'Aula', 'piso' => 'Planta Baja']
+        );
         $categoria = CategoriaSolicitud::firstOrCreate(['nombre_categoria' => 'General']);
         $prioridad = MatrizPrioridad::firstOrCreate(['nivel' => 'Media'], ['tiempo_respuesta_hrs' => 24]);
         $user = $usuario ?? User::factory()->create();
