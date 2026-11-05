@@ -16,7 +16,7 @@
             </div>
             <div>
                 <h2 class="text-base font-bold text-slate-900">Universidad Metropolitana</h2>
-                <p class="text-xs text-slate-500 font-medium">Portal de Mantenimiento y Recursos Materiales</p>
+                <p class="text-xs text-slate-500 font-medium">Portal de Mantenimiento y Recursos Materiales (SIMIC)</p>
             </div>
         </div>
 
@@ -25,50 +25,60 @@
             <button type="button" class="py-2.5 text-xs font-bold text-white bg-[#0b2239] rounded-lg shadow-xs transition-all">
                 Acceso al Sistema
             </button>
-            <button type="button" class="py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-transparent hover:bg-white/60 rounded-lg transition-all">
-                Registro de Nuevo Solicitante
-            </button>
+            <a href="{{ url('/') }}" class="text-center py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-transparent hover:bg-white/60 rounded-lg transition-all">
+                Portal Público
+            </a>
         </div>
     </div>
 
     <div class="p-6 sm:p-8 space-y-6">
-        <!-- Banner de Conflicto / Alerta de Credenciales -->
-        <div class="rounded-xl bg-red-50 p-4 border border-red-200 text-xs">
-            <div class="flex items-start gap-3">
-                <div class="p-1 rounded-full bg-red-100 text-red-600 shrink-0">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="font-bold text-red-800">Conflicto de Credenciales Institucionales</h3>
-                    <p class="mt-0.5 text-red-600 leading-relaxed">
-                        Error: los datos ingresados no coinciden. El rol seleccionado no corresponde a la categoría de la cuenta institucional proporcionada.
-                    </p>
+        <!-- Bloque de Alertas Dinámicas por Sesión -->
+        @if (session('error'))
+            <div class="rounded-xl bg-red-50 p-4 border border-red-200 text-xs">
+                <div class="flex items-start gap-3">
+                    <div class="p-1 rounded-full bg-red-100 text-red-600 shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-red-800">Conflicto de Credenciales Institucionales</h3>
+                        <p class="mt-0.5 text-red-600 leading-relaxed">{{ session('error') }}</p>
+                    </div>
                 </div>
             </div>
-        </div>
+        @endif
+
+        @if (session('status'))
+            <div class="rounded-xl bg-emerald-50 p-4 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-3">
+                <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span class="font-medium">{{ session('status') }}</span>
+            </div>
+        @endif
 
         <!-- Formulario de Inicio de Sesión -->
-        <form method="POST" action="{{ route('login', [], false) ?: '#' }}" class="space-y-5">
+        <form method="POST" action="{{ url('/login') }}" class="space-y-5">
             @csrf
 
-            <!-- Campo 1: Rol Institucional -->
+            <!-- Campo 1: Selección Obligatoria de Rol Institucional -->
             <div>
                 <div class="flex items-center justify-between mb-1.5">
-                    <label for="role" class="text-xs font-bold text-slate-800">
+                    <label for="rol" class="text-xs font-bold text-slate-800">
                         Rol Institucional Obligatorio <span class="text-red-500">*</span>
                     </label>
                     <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">SEC-POL-04</span>
                 </div>
                 <div class="relative">
-                    <select id="role" name="role" required
+                    <select id="rol" name="rol" required
                             class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-800 focus:border-sky-600 focus:ring-1 focus:ring-sky-600 focus:outline-none transition-shadow shadow-xs">
-                        <option value="" disabled selected>Seleccione la atribución operativa</option>
-                        <option value="coordinador">Superusuario / Coordinador General</option>
-                        <option value="tecnico">Cuadrilla Técnica Especializada</option>
-                        <option value="almacen">Encargado de Almacén y Suministros</option>
-                        <option value="solicitante">Solicitante (Docente / Administrativo / Alumno)</option>
+                        <option value="" disabled {{ old('rol') ? '' : 'selected' }}>Seleccione la atribución operativa</option>
+                        <option value="coordinador" {{ old('rol') === 'coordinador' ? 'selected' : '' }}>Superusuario / Coordinador General</option>
+                        <option value="tecnico" {{ old('rol') === 'tecnico' ? 'selected' : '' }}>Cuadrilla Técnica Especializada</option>
+                        <option value="almacen" {{ old('rol') === 'almacen' ? 'selected' : '' }}>Encargado de Almacén y Suministros</option>
+                        <option value="profesor" {{ old('rol') === 'profesor' ? 'selected' : '' }}>Docente / Profesor de Campus</option>
+                        <option value="alumno" {{ old('rol') === 'alumno' ? 'selected' : '' }}>Alumno / Estudiante Solicitante</option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -86,10 +96,11 @@
                     <span class="text-[11px] text-slate-400 font-mono">dominio@universidad.edu.mx</span>
                 </div>
                 <input type="email" id="email" name="email" required
+                       value="{{ old('email') }}"
                        placeholder="usuario@alumnos.edu.mx"
                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-sky-600 focus:ring-1 focus:ring-sky-600 focus:outline-none transition-shadow shadow-xs">
                 <p class="mt-1 text-[11px] text-slate-400">
-                    Formatos válidos: <span class="font-mono text-slate-500">@alumnos.edu.mx, @profesores.edu.mx, @coordinacion.edu.mx, @tecnicos.edu.mx, @almacen.edu.mx</span>
+                    Formatos válidos: <span class="font-mono text-slate-500">@alumnos.edu.mx, @profesores.edu.mx, @admin.edu.mx, @tecnicos.edu.mx, @almacen.edu.mx</span>
                 </p>
             </div>
 
@@ -99,27 +110,30 @@
                     <label for="password" class="text-xs font-bold text-slate-800">
                         Contraseña Institucional <span class="text-red-500">*</span>
                     </label>
-                    <a href="#" class="text-[11px] font-semibold text-sky-700 hover:text-sky-900 transition-colors">
-                        ¿Olvidó su contraseña institucional?
-                    </a>
+                    <span class="text-[11px] text-slate-400">Protección BCrypt</span>
                 </div>
                 <div class="relative">
                     <input type="password" id="password" name="password" required
-                           value="••••••••••••"
+                           placeholder="Ingrese su contraseña institucional"
                            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-sky-600 focus:ring-1 focus:ring-sky-600 focus:outline-none transition-shadow shadow-xs">
-                    <button type="button" class="absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400 hover:text-slate-600">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
-                    </button>
                 </div>
+            </div>
+
+            <!-- Opciones Adicionales: Recordar Credenciales -->
+            <div class="flex items-center justify-between text-xs">
+                <label class="flex items-center gap-2 cursor-pointer text-slate-600">
+                    <input type="checkbox" name="remember" class="rounded border-slate-300 text-sky-600 focus:ring-sky-600">
+                    <span>Mantener sesión activa</span>
+                </label>
+                <a href="mailto:soporte@universidad.edu.mx" class="text-sky-700 hover:text-sky-900 font-semibold transition-colors">
+                    ¿Problemas con sus accesos?
+                </a>
             </div>
 
             <!-- Botón de Inicio de Sesión -->
             <button type="submit" 
                     class="w-full mt-2 py-3 px-4 bg-[#0b2239] hover:bg-[#071626] text-white text-xs font-bold rounded-xl shadow-sm transition-all duration-150 flex items-center justify-center gap-2 group ring-2 ring-transparent focus:ring-sky-600">
-                <span>Iniciar Sesión en el Portal</span>
+                <span>Ingresar al Portal Institucional</span>
                 <svg class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                 </svg>
@@ -146,7 +160,7 @@
                         </tr>
                         <tr>
                             <td class="px-3.5 py-2 font-medium text-slate-700">Coordinación</td>
-                            <td class="px-3.5 py-2 font-mono text-slate-500 text-right">@coordinacion.edu.mx</td>
+                            <td class="px-3.5 py-2 font-mono text-slate-500 text-right">@admin.edu.mx</td>
                             <td class="px-3.5 py-2 font-medium text-slate-700 border-l border-slate-200">Técnicos</td>
                             <td class="px-3.5 py-2 font-mono text-slate-500 text-right">@tecnicos.edu.mx</td>
                         </tr>
