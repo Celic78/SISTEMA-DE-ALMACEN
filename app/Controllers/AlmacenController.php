@@ -2,16 +2,22 @@
 
 namespace App\Controllers;
 
+use App\Exceptions\ApprovalRequiredException;
+use App\Exceptions\BusinessRuleException;
 use App\Http\Controllers\Controller;
 use App\Models\BitacoraSistema;
 use App\Models\Existencia;
 use App\Models\Material;
+use App\Models\MovimientoMaterial;
 use App\Models\OrdenTrabajo;
 use App\Models\SeccionAlmacen;
+use App\Models\User;
 use App\Services\AlmacenService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AlmacenController extends Controller
 {
@@ -129,5 +135,164 @@ class AlmacenController extends Controller
             'requisiciones' => $requisiciones,
             'ordenesDespacho' => $ordenesListasDespacho,
         ]);
+    }
+
+    /**
+     * Despacha materiales en ventanilla, descuenta stock de existencias y genera el vale digital con auditoría.
+     *
+     * @param  Request|int|string|null  $ordenId
+     * @param  array<int, array{id_material: int, cantidad: float}>  $itemsDespacho
+     */
+    public function despacharMaterial($ordenId = null, array $itemsDespacho = []): RedirectResponse|JsonResponse
+    {
+        $request = null;
+        if ($ordenId instanceof Request) {
+            $request = $ordenId;
+            $ordenId = (int) ($request->input('id_orden') ?? $request->input('orden_id'));
+            $itemsDespacho = $request->input('items') ?? $request->input('materiales') ?? [];
+        } else {
+            $ordenId = (int) $ordenId;
+        }
+
+        /** @var OrdenTrabajo|null $orden */
+        $orden = OrdenTrabajo::with(['solicitud.espacio', 'tecnico'])->find($ordenId);
+        if ($orden === null) {
+            $msg = 'La orden de trabajo indicada para el despacho no fue localizada.';
+
+            return ($request && $request->wantsJson())
+                ? response()->json(['success' => false, 'message' => $msg], 404)
+                : back()->with('error', $msg);
+        }
+
+        if (empty($itemsDespacho) || ! is_array($itemsDespacho)) {
+            $msg = 'Debe indicar al menos un material e indicar la cantidad a entregar.';
+
+            return ($request && $request->wantsJson())
+                ? response()->json(['success' => false, 'message' => $msg], 422)
+                : back()->with('error', $msg);
+        }
+
+        /** @var User $usuarioAlmacen */
+        $usuarioAlmacen = Auth::user()
+            ?? User::whereHas('roles', fn ($q) => $q->where('nombre_rol', 'like', '%almacen%'))->first()
+            ?? User::first();
+
+        try {
+            // 1. Ejecución del despacho mediante el servicio especializado (validaciones, descuento e inserción en Kardex)
+            $movimientos = $this->almacenService->despacharMateriales(
+                $orden,
+                $usuarioAlmacen,
+                $itemsDespacho
+            );
+
+            // 2. Generación formal del Vale Digital Foliado (VAL-2026-XXXX)
+            $metodo = $request ? ($request->input('metodo_validacion') ?? 'QR_DIGITAL') : 'QR_DIGITAL';
+            $valeDigital = $this->generarValeDigital($orden, $movimientos, $metodo);
+
+            // 3. INSERCIÓN OBLIGATORIA EN BITÁCORA DE AUDITORÍA
+            BitacoraSistema::create([
+                'id_usuario' => $usuarioAlmacen->id,
+                'accion' => 'DESPACHO_VALE_DIGITAL_AUDITORIA',
+                'descripcion' => json_encode([
+                    'modulo' => 'ALMACEN_SUMINISTROS',
+                    'evento' => 'DESPACHO_OFICIAL_VENTANILLA',
+                    'folio_vale' => $valeDigital['folio_vale'],
+                    'id_orden' => $orden->id_orden,
+                    'tecnico_receptor_id' => $orden->id_tecnico,
+                    'tecnico_receptor_nombre' => $orden->tecnico?->name ?? 'Técnico Cuadrilla',
+                    'almacenista_despachador_id' => $usuarioAlmacen->id,
+                    'almacenista_nombre' => $usuarioAlmacen->name,
+                    'metodo_autenticacion' => $metodo,
+                    'total_materiales' => count($itemsDespacho),
+                    'items' => $itemsDespacho,
+                    'hash_auditoria' => $valeDigital['sello_digital_seguridad'],
+                    'timestamp_oficial' => now()->toIso8601String(),
+                ], JSON_UNESCAPED_UNICODE),
+                'fecha' => now(),
+            ]);
+
+            $mensajeExito = "Despacho autorizado exitosamente. Se emitió el Vale Digital Oficial {$valeDigital['folio_vale']}.";
+
+            if ($request && $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $mensajeExito,
+                    'vale_digital' => $valeDigital,
+                    'movimientos' => $movimientos,
+                ], 200);
+            }
+
+            return back()->with('status', $mensajeExito)->with('vale_generado', $valeDigital);
+
+        } catch (ApprovalRequiredException|\App\Exceptions\InsufficientStockException|BusinessRuleException $e) {
+            return ($request && $request->wantsJson())
+                ? response()->json(['success' => false, 'message' => $e->getMessage()], 422)
+                : back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            return ($request && $request->wantsJson())
+                ? response()->json(['success' => false, 'message' => 'Error en despacho: '.$e->getMessage()], 500)
+                : back()->with('error', 'Error en despacho: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Emite la constancia oficial y estructura del Vale Digital foliado con sello de integridad.
+     *
+     * @param  OrdenTrabajo|int|string  $orden
+     * @param  array<int, mixed>  $movimientos
+     * @return array<string, mixed>
+     */
+    public function generarValeDigital($orden, array $movimientos = [], ?string $metodoValidacion = 'QR_DIGITAL'): array
+    {
+        $idOrden = $orden instanceof OrdenTrabajo ? $orden->id_orden : (int) $orden;
+        $ordenModel = $orden instanceof OrdenTrabajo ? $orden : OrdenTrabajo::with(['solicitud', 'tecnico'])->find($idOrden);
+
+        $folioVale = 'VAL-'.date('Y').'-'.str_pad((string) $idOrden, 4, '0', STR_PAD_LEFT);
+        $selloDigital = hash('sha256', $folioVale.'-'.$idOrden.'-'.now()->timestamp.'-'.config('app.key'));
+
+        $detallesInsumos = [];
+        foreach ($movimientos as $mov) {
+            if ($mov instanceof MovimientoMaterial) {
+                $detallesInsumos[] = [
+                    'id_material' => $mov->id_material,
+                    'material' => $mov->material?->nombre_material ?? 'Material #'.$mov->id_material,
+                    'unidad_medida' => $mov->material?->unidad_medida ?? 'Pza',
+                    'codigo_barras' => $mov->material?->codigo_qr_barras ?? 'N/A',
+                    'cantidad_entregada' => (float) $mov->cantidad,
+                    'fecha_movimiento' => $mov->fecha_movimiento?->toDateTimeString() ?? now()->toDateTimeString(),
+                ];
+            } elseif (is_array($mov)) {
+                $detallesInsumos[] = $mov;
+            }
+        }
+
+        $vale = [
+            'folio_vale' => $folioVale,
+            'id_orden' => $idOrden,
+            'folio_solicitud' => 'FOL-'.date('Y').'-'.str_pad((string) ($ordenModel?->solicitud?->id_solicitud ?? $idOrden), 4, '0', STR_PAD_LEFT),
+            'tecnico_responsable' => $ordenModel?->tecnico?->name ?? 'Técnico de Cuadrilla',
+            'email_tecnico' => $ordenModel?->tecnico?->email ?? 'tecnico@tecnicos.edu.mx',
+            'metodo_validacion' => $metodoValidacion ?? 'QR_DIGITAL',
+            'sello_digital_seguridad' => $selloDigital,
+            'fecha_emision' => now()->toDateTimeString(),
+            'insumos_entregados' => $detallesInsumos,
+            'estado_vale' => 'firmado_y_entregado',
+        ];
+
+        // Registro de respaldo y auditoría en bitacora_auditoria (bitacora_sistema)
+        BitacoraSistema::create([
+            'id_usuario' => Auth::id() ?? $ordenModel?->id_tecnico,
+            'accion' => 'EMISION_VALE_DIGITAL_AUDITORIA',
+            'descripcion' => json_encode([
+                'folio_vale' => $folioVale,
+                'id_orden' => $idOrden,
+                'sello_seguridad' => $selloDigital,
+                'total_insumos' => count($detallesInsumos),
+                'metodo' => $metodoValidacion,
+            ], JSON_UNESCAPED_UNICODE),
+            'fecha' => now(),
+        ]);
+
+        return $vale;
     }
 }
