@@ -18,7 +18,7 @@ class EnsureOrdenAprobadaParaMaterial
      * If the work order flags `requiere_aprobacion`, materials cannot be dispatched until
      * the order or its approval status has been formally authorized.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      * @param  string  $routeParamName  Route parameter key holding the OrdenTrabajo (default: 'orden')
      */
     public function handle(Request $request, Closure $next, string $routeParamName = 'orden'): Response

@@ -16,8 +16,7 @@ class EnsureEmailTipo
      * Validates that the user's institutional email account type matches the allowed types.
      * Valid account types: 'alumno', 'profesor', 'coordinador', 'almacen', 'tecnico'.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  ...$tipos
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next, string ...$tipos): Response
     {

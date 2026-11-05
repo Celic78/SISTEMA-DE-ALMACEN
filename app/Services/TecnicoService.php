@@ -7,7 +7,6 @@ namespace App\Services;
 use App\Exceptions\ApprovalRequiredException;
 use App\Exceptions\BusinessRuleException;
 use App\Models\BitacoraSistema;
-use App\Models\EvidenciaCierre;
 use App\Models\HistorialEstado;
 use App\Models\OrdenTrabajo;
 use App\Models\ReporteFinal;
@@ -186,6 +185,39 @@ class TecnicoService
 
             return $orden;
         });
+    }
+
+    /**
+     * Generar solicitud técnica de insumos seleccionados del catálogo de almacén.
+     *
+     * Paso 2 del flujo triangulado de materiales.
+     *
+     * @param  list<array{id_material: int, cantidad: float, nota?: string|null}>  $itemsInsumos
+     *
+     * @throws BusinessRuleException
+     */
+    public function solicitarInsumos(
+        OrdenTrabajo $orden,
+        User $tecnico,
+        array $itemsInsumos,
+        ?string $justificacion = null
+    ): void {
+        $this->validarTecnicoAsignado($orden, $tecnico);
+
+        if ($itemsInsumos === []) {
+            throw new BusinessRuleException('Debe especificar al menos un insumo o herramienta a solicitar.');
+        }
+
+        BitacoraSistema::create([
+            'id_usuario' => $tecnico->id,
+            'accion' => 'SOLICITUD_INSUMOS_TECNICO',
+            'descripcion' => json_encode([
+                'id_orden' => $orden->id_orden,
+                'items' => $itemsInsumos,
+                'justificacion' => $justificacion,
+            ], JSON_UNESCAPED_UNICODE),
+            'fecha' => now(),
+        ]);
     }
 
     /**

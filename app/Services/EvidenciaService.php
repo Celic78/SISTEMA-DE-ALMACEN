@@ -64,7 +64,7 @@ class EvidenciaService
             );
         }
 
-        $guardadas = new Collection();
+        $guardadas = new Collection;
 
         foreach ($items as $item) {
             $evidencia = $this->procesarItemEvidenciaCierre($orden, $item, $descripcionPorDefecto);

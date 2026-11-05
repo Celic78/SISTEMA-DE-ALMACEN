@@ -10,7 +10,6 @@ use App\Models\Aprobacion;
 use App\Models\BitacoraSistema;
 use App\Models\HistorialEstado;
 use App\Models\OrdenTrabajo;
-use App\Models\Rol;
 use App\Models\Solicitud;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;

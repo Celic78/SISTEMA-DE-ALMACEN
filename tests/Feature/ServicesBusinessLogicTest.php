@@ -9,14 +9,9 @@ use App\Exceptions\BusinessRuleException;
 use App\Exceptions\DuplicateSolicitudException;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidInstitutionalEmailException;
-use App\Models\BitacoraSistema;
 use App\Models\CategoriaSolicitud;
 use App\Models\Edificio;
-use App\Models\Espacio;
-use App\Models\Existencia;
-use App\Models\Material;
 use App\Models\MatrizPrioridad;
-use App\Models\OrdenTrabajo;
 use App\Models\Plantel;
 use App\Models\Rol;
 use App\Models\SeccionAlmacen;
@@ -30,7 +25,6 @@ use App\Services\SolicitudService;
 use App\Services\TecnicoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -39,10 +33,15 @@ class ServicesBusinessLogicTest extends TestCase
     use RefreshDatabase;
 
     protected AuthService $authService;
+
     protected SolicitudService $solicitudService;
+
     protected CoordinacionService $coordinacionService;
+
     protected TecnicoService $tecnicoService;
+
     protected AlmacenService $almacenService;
+
     protected EvidenciaService $evidenciaService;
 
     protected function setUp(): void

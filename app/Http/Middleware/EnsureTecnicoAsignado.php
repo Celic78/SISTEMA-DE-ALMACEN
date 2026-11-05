@@ -17,7 +17,7 @@ class EnsureTecnicoAsignado
      * Ensures that the work order being managed is assigned to the authenticated technician,
      * unless the user is a Coordinator or Administrator.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      * @param  string  $routeParamName  Route parameter key holding the OrdenTrabajo or its ID (default: 'orden')
      */
     public function handle(Request $request, Closure $next, string $routeParamName = 'orden'): Response

@@ -16,7 +16,7 @@ class ForceJsonResponse
      * Ensures that incoming requests are treated as expecting JSON responses,
      * guaranteeing consistent JSON format for validation errors and exceptions.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {

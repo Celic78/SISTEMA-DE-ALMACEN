@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Exceptions\ApprovalRequiredException;
-use App\Exceptions\BusinessRuleException;
 use App\Exceptions\InsufficientStockException;
 use App\Models\CategoriaSolicitud;
-use App\Models\Edificio;
-use App\Models\Espacio;
 use App\Models\Existencia;
 use App\Models\Material;
 use App\Models\MatrizPrioridad;
@@ -49,6 +46,27 @@ class AlmacenServiceTest extends TestCase
         $this->assertDatabaseHas('bitacora_sistema', [
             'id_usuario' => $coordinador->id,
             'accion' => 'PRENOTIFICACION_DESPACHO_ALMACEN',
+        ]);
+    }
+
+    public function test_registrar_solicitud_insumos_tecnico_guarda_desglose_en_bitacora(): void
+    {
+        $tecnico = User::factory()->create(['email_tipo' => 'tecnico']);
+        $orden = $this->crearOrdenPrueba();
+
+        $this->almacenService->registrarSolicitudInsumosTecnico(
+            $orden,
+            $tecnico,
+            [
+                ['id_material' => 1, 'cantidad' => 3.0],
+                ['id_material' => 2, 'cantidad' => 1.0],
+            ],
+            'Materiales para reparación de fuga'
+        );
+
+        $this->assertDatabaseHas('bitacora_sistema', [
+            'id_usuario' => $tecnico->id,
+            'accion' => 'SOLICITUD_INSUMOS_TECNICO',
         ]);
     }
 

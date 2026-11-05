@@ -17,7 +17,7 @@ class EnsureSolicitudOwnership
      * Ensures that regular users can only access or modify their own Solicitud records.
      * Coordinators and Administrators are allowed to inspect and manage all requests.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      * @param  string  $routeParamName  Route parameter key holding the Solicitud or its ID (default: 'solicitud')
      */
     public function handle(Request $request, Closure $next, string $routeParamName = 'solicitud'): Response

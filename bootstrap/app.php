@@ -1,5 +1,13 @@
 <?php
 
+use App\Http\Middleware\EnsureEmailTipo;
+use App\Http\Middleware\EnsureOrdenAprobadaParaMaterial;
+use App\Http\Middleware\EnsureSolicitudOwnership;
+use App\Http\Middleware\EnsureTecnicoAsignado;
+use App\Http\Middleware\EnsureUserHasRole;
+use App\Http\Middleware\ForceJsonResponse;
+use App\Http\Middleware\RegistrarBitacoraSistema;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,19 +22,19 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Headers de seguridad institucionales aplicados globalmente a solicitudes web
         $middleware->web(append: [
-            \App\Http\Middleware\SecurityHeaders::class,
+            SecurityHeaders::class,
         ]);
 
         // Alias de middlewares para asignación en rutas y controladores
         $middleware->alias([
-            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
-            'email.tipo' => \App\Http\Middleware\EnsureEmailTipo::class,
-            'tecnico.asignado' => \App\Http\Middleware\EnsureTecnicoAsignado::class,
-            'solicitud.propietario' => \App\Http\Middleware\EnsureSolicitudOwnership::class,
-            'orden.aprobada.material' => \App\Http\Middleware\EnsureOrdenAprobadaParaMaterial::class,
-            'bitacora' => \App\Http\Middleware\RegistrarBitacoraSistema::class,
-            'force.json' => \App\Http\Middleware\ForceJsonResponse::class,
-            'security.headers' => \App\Http\Middleware\SecurityHeaders::class,
+            'role' => EnsureUserHasRole::class,
+            'email.tipo' => EnsureEmailTipo::class,
+            'tecnico.asignado' => EnsureTecnicoAsignado::class,
+            'solicitud.propietario' => EnsureSolicitudOwnership::class,
+            'orden.aprobada.material' => EnsureOrdenAprobadaParaMaterial::class,
+            'bitacora' => RegistrarBitacoraSistema::class,
+            'force.json' => ForceJsonResponse::class,
+            'security.headers' => SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

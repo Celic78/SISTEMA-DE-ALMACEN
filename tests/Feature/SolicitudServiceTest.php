@@ -10,7 +10,6 @@ use App\Models\CategoriaSolicitud;
 use App\Models\Edificio;
 use App\Models\Espacio;
 use App\Models\MatrizPrioridad;
-use App\Models\OrdenTrabajo;
 use App\Models\Plantel;
 use App\Models\Solicitud;
 use App\Models\User;

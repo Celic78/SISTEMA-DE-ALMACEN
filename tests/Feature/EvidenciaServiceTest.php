@@ -6,9 +6,6 @@ namespace Tests\Feature;
 
 use App\Exceptions\BusinessRuleException;
 use App\Models\CategoriaSolicitud;
-use App\Models\Edificio;
-use App\Models\Espacio;
-use App\Models\EvidenciaCierre;
 use App\Models\MatrizPrioridad;
 use App\Models\OrdenTrabajo;
 use App\Models\Plantel;

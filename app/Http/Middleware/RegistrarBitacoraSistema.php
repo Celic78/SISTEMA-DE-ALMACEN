@@ -19,7 +19,7 @@ class RegistrarBitacoraSistema
      * Automatically registers audit log entries in `bitacora_sistema` for successful
      * mutating requests (POST, PUT, PATCH, DELETE) or specifically monitored endpoints.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      * @param  string|null  $accionPersonalizada  Optional override for the action name
      */
     public function handle(Request $request, Closure $next, ?string $accionPersonalizada = null): Response

@@ -45,6 +45,35 @@ class AlmacenService
     }
 
     /**
+     * Step 2: Receive and log the detailed technical requisition sent by the assigned technician.
+     *
+     * @param  list<array{id_material: int, cantidad: float, nota?: string|null}>  $itemsInsumos
+     *
+     * @throws BusinessRuleException
+     */
+    public function registrarSolicitudInsumosTecnico(
+        OrdenTrabajo $orden,
+        User $tecnico,
+        array $itemsInsumos,
+        ?string $justificacion = null
+    ): void {
+        if ($itemsInsumos === []) {
+            throw new BusinessRuleException('Debe incluir al menos un insumo en la solicitud técnica.');
+        }
+
+        BitacoraSistema::create([
+            'id_usuario' => $tecnico->id,
+            'accion' => 'SOLICITUD_INSUMOS_TECNICO',
+            'descripcion' => json_encode([
+                'id_orden' => $orden->id_orden,
+                'items' => $itemsInsumos,
+                'justificacion' => $justificacion,
+            ], JSON_UNESCAPED_UNICODE),
+            'fecha' => now(),
+        ]);
+    }
+
+    /**
      * Step 3: Confirm and execute triangulated material dispatch for a work order.
      *
      * Business Rules:

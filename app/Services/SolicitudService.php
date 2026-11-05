@@ -14,6 +14,7 @@ use App\Models\OrdenTrabajo;
 use App\Models\Solicitud;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -24,6 +25,7 @@ class SolicitudService
     ) {
         $this->evidenciaService ??= app(EvidenciaService::class);
     }
+
     /**
      * States considered active / unresolved for duplicate prevention.
      *
@@ -77,15 +79,25 @@ class SolicitudService
     /**
      * Check if the user already submitted an identical active report.
      *
-     * Rule: Checks combination of (id_usuario + id_espacio + id_categoria) with active status.
+     * Rule: Checks combination of (id_usuario + id_espacio + id_categoria + optional fecha_falla) with active status.
      */
-    public function existeSolicitudDuplicadaUsuario(int $idUsuario, int $idEspacio, int $idCategoria): bool
-    {
-        return Solicitud::where('id_usuario', $idUsuario)
+    public function existeSolicitudDuplicadaUsuario(
+        int $idUsuario,
+        int $idEspacio,
+        int $idCategoria,
+        Carbon|string|null $fechaFalla = null
+    ): bool {
+        $query = Solicitud::where('id_usuario', $idUsuario)
             ->where('id_espacio', $idEspacio)
             ->where('id_categoria', $idCategoria)
-            ->whereIn('estado', $this->estadosActivos)
-            ->exists();
+            ->whereIn('estado', $this->estadosActivos);
+
+        if ($fechaFalla !== null) {
+            $fecha = $fechaFalla instanceof Carbon ? $fechaFalla : Carbon::parse($fechaFalla);
+            $query->whereDate('fecha_hallazgo', $fecha->toDateString());
+        }
+
+        return $query->exists();
     }
 
     /**
@@ -117,8 +129,9 @@ class SolicitudService
         // REGLA 1: Validación jerárquica de ubicación (Edificio -> Espacio)
         $this->validarUbicacionJerarquica($idEdificio, $idEspacio);
 
-        // REGLA 2: Anti-duplicados por usuario
-        if ($this->existeSolicitudDuplicadaUsuario($usuario->id, $idEspacio, $idCategoria)) {
+        // REGLA 2: Anti-duplicados por usuario (usuario + ubicacion + categoria + fecha_falla)
+        $fechaHallazgo = $datos['fecha_hallazgo'] ?? null;
+        if ($this->existeSolicitudDuplicadaUsuario($usuario->id, $idEspacio, $idCategoria, $fechaHallazgo)) {
             throw new DuplicateSolicitudException(
                 'Ya cuenta con un reporte registrado para esta misma ubicación y categoría en proceso de atención.'
             );
@@ -134,7 +147,7 @@ class SolicitudService
 
         // Procesamiento de evidencia física/digital si se adjuntó un archivo
         $evidenciaUrl = $datos['evidencia_url'] ?? null;
-        if (isset($datos['archivo_evidencia']) && $datos['archivo_evidencia'] instanceof \Illuminate\Http\UploadedFile) {
+        if (isset($datos['archivo_evidencia']) && $datos['archivo_evidencia'] instanceof UploadedFile) {
             $evidenciaUrl = $this->evidenciaService->almacenarEvidenciaSolicitud($datos['archivo_evidencia']);
         }
 

@@ -16,8 +16,7 @@ class EnsureUserHasRole
      * Verifies that the authenticated user possesses at least one of the specified roles.
      * Administrators are automatically granted access.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  ...$roles
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {

@@ -7,15 +7,9 @@ namespace Tests\Feature;
 use App\Exceptions\ApprovalRequiredException;
 use App\Exceptions\BusinessRuleException;
 use App\Models\CategoriaSolicitud;
-use App\Models\Edificio;
-use App\Models\Espacio;
-use App\Models\HistorialEstado;
 use App\Models\MatrizPrioridad;
-use App\Models\OrdenTrabajo;
 use App\Models\Plantel;
-use App\Models\ReporteFinal;
 use App\Models\Solicitud;
-use App\Models\TareaOrden;
 use App\Models\User;
 use App\Services\TecnicoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -234,6 +228,32 @@ class TecnicoServiceTest extends TestCase
 
         $tareaCompletada = $this->tecnicoService->toggleTarea($tarea, $tecnico, true);
         $this->assertTrue($tareaCompletada->completada);
+    }
+
+    public function test_solicitar_insumos_genera_registro_en_bitacora_para_almacen(): void
+    {
+        $tecnico = User::factory()->create(['email_tipo' => 'tecnico']);
+        $solicitud = $this->crearSolicitudPrueba();
+
+        $orden = $solicitud->ordenTrabajo()->create([
+            'id_tecnico' => $tecnico->id,
+            'estado' => 'en_proceso',
+        ]);
+
+        $this->tecnicoService->solicitarInsumos(
+            $orden,
+            $tecnico,
+            [
+                ['id_material' => 1, 'cantidad' => 2.0, 'nota' => 'Breakers 30A'],
+                ['id_material' => 2, 'cantidad' => 5.0, 'nota' => 'Cinta de aislar'],
+            ],
+            'Insumos requeridos para sustitución de centro de carga'
+        );
+
+        $this->assertDatabaseHas('bitacora_sistema', [
+            'id_usuario' => $tecnico->id,
+            'accion' => 'SOLICITUD_INSUMOS_TECNICO',
+        ]);
     }
 
     protected function crearSolicitudPrueba(): Solicitud

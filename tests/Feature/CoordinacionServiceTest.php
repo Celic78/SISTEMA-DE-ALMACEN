@@ -6,11 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\Aprobacion;
 use App\Models\CategoriaSolicitud;
-use App\Models\Edificio;
-use App\Models\Espacio;
-use App\Models\HistorialEstado;
 use App\Models\MatrizPrioridad;
-use App\Models\OrdenTrabajo;
 use App\Models\Plantel;
 use App\Models\Rol;
 use App\Models\Solicitud;

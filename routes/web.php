@@ -27,7 +27,7 @@ Route::get('/', function () {
 /*
 |--------------------------------------------------------------------------
 | Módulos Operativos
-| 
+|
 | Los siguientes middlewares están registrados en bootstrap/app.php y listos
 | para aplicarse según el nivel de protección requerido:
 | - 'role:NombreRol'                  -> Valida roles (ej. Coordinador, Almacen, Tecnico)
@@ -60,4 +60,3 @@ Route::get('/cuadrillas', function () {
 Route::get('/almacen', function () {
     return view('dashboard');
 })->name('almacen.index');
-
