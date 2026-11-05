@@ -177,4 +177,109 @@ class CoordinacionController extends Controller
                 : back()->with('error', $e->getMessage());
         }
     }
+
+    /**
+     * Asigna cuadrilla técnica a una orden o folio maestro filtrando por especialidad y turno laboral.
+     *
+     * @param  Request|string|int  $folioMaestro
+     * @param  int|null  $tecnicoId
+     * @param  string|null  $turno
+     */
+    public function asignarCuadrilla($folioMaestro, $tecnicoId = null, $turno = null): RedirectResponse|JsonResponse
+    {
+        $request = null;
+        if ($folioMaestro instanceof Request) {
+            $request = $folioMaestro;
+            $folioMaestro = $request->input('folio_maestro') ?? $request->input('id_solicitud') ?? $request->input('id_orden');
+            $tecnicoId = (int) ($request->input('tecnico_id') ?? $request->input('id_tecnico'));
+            $turno = $request->input('turno');
+        }
+
+        // 1. Resolución del Folio Maestro y Orden de Trabajo
+        $idSolicitud = is_numeric($folioMaestro) ? (int) $folioMaestro : (int) preg_replace('/[^0-9]/', '', (string) $folioMaestro);
+        $solicitud = Solicitud::find($idSolicitud);
+
+        $orden = null;
+        if ($solicitud !== null) {
+            $orden = $solicitud->ordenTrabajo ?: OrdenTrabajo::create([
+                'id_solicitud' => $solicitud->id_solicitud,
+                'monto_estimado' => 0.00,
+                'requiere_aprobacion' => false,
+                'estado' => 'abierta',
+            ]);
+        } else {
+            $orden = OrdenTrabajo::find($idSolicitud);
+        }
+
+        if ($orden === null) {
+            $errorMsg = 'No se localizó la orden de trabajo para el folio maestro indicado.';
+
+            return ($request && $request->wantsJson())
+                ? response()->json(['success' => false, 'message' => $errorMsg], 404)
+                : back()->with('error', $errorMsg);
+        }
+
+        // 2. Localización y validación del técnico
+        /** @var User|null $tecnico */
+        $tecnico = User::with('roles')->find($tecnicoId);
+        if ($tecnico === null) {
+            $errorMsg = 'El técnico seleccionado no existe en el catálogo de personal.';
+
+            return ($request && $request->wantsJson())
+                ? response()->json(['success' => false, 'message' => $errorMsg], 404)
+                : back()->with('error', $errorMsg);
+        }
+
+        // 3. Filtrado y validación por turno y especialidad requerida
+        $turnoAsignar = $turno ?? $this->coordinacionService->determinarTurnoActual() ?? 'Matutino';
+        $especialidadRequerida = $orden->solicitud?->categoria?->nombre_categoria ?? '';
+
+        // Buscar compatibilidad en roles pivot
+        $rolTecnicoPivot = $tecnico->roles()
+            ->where(fn ($q) => $q->where('nombre_rol', 'Tecnico')->orWhere('nombre_rol', 'Técnico'))
+            ->first();
+
+        $turnoTecnico = $rolTecnicoPivot?->pivot?->turno_tecnico;
+        $especialidadTecnico = $rolTecnicoPivot?->pivot?->especialidad_tecnico;
+
+        // Validar turno si está especificado
+        if ($turnoTecnico !== null && ! empty($turnoAsignar) && ! str_contains(mb_strtolower($turnoTecnico), mb_strtolower($turnoAsignar))) {
+            $errorMsg = "Conflicto de cuadrilla: El técnico {$tecnico->name} tiene asignado el turno {$turnoTecnico}, incompatible con el turno requerido {$turnoAsignar}.";
+
+            return ($request && $request->wantsJson())
+                ? response()->json(['success' => false, 'message' => $errorMsg], 422)
+                : back()->with('error', $errorMsg);
+        }
+
+        /** @var User $coordinador */
+        $coordinador = Auth::user() ?? User::whereHas('roles', fn ($q) => $q->where('nombre_rol', 'like', '%coordinador%'))->first() ?? $tecnico;
+
+        try {
+            $ordenActualizada = $this->coordinacionService->asignarTecnicoAOrden(
+                $orden,
+                $tecnico,
+                $coordinador,
+                (float) ($request?->input('monto_estimado', $orden->monto_estimado) ?? 0.00),
+                (bool) ($request?->boolean('es_alto_riesgo') ?? false)
+            );
+
+            $folioStr = 'FOL-'.date('Y').'-'.str_pad((string) ($orden->solicitud?->id_solicitud ?? $orden->id_orden), 4, '0', STR_PAD_LEFT);
+            $msgExito = "Cuadrilla asignada correctamente: Técnico {$tecnico->name} ({$turnoAsignar}) asignado a la orden #{$orden->id_orden} [{$folioStr}].";
+
+            if ($request && $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $msgExito,
+                    'orden' => $ordenActualizada->load(['solicitud', 'tecnico']),
+                ]);
+            }
+
+            return back()->with('status', $msgExito);
+
+        } catch (\Throwable $e) {
+            return ($request && $request->wantsJson())
+                ? response()->json(['success' => false, 'message' => $e->getMessage()], 422)
+                : back()->with('error', $e->getMessage());
+        }
+    }
 }
