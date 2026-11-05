@@ -16,7 +16,7 @@
             </div>
             <div>
                 <h2 class="text-base font-bold text-slate-900">Universidad Metropolitana</h2>
-                <p class="text-xs text-slate-500 font-medium">Portal de Mantenimiento y Recursos Materiales (SIMIC)</p>
+                <p class="text-xs text-slate-500 font-medium">Portal de Recursos Materiales y Mantenimiento Escolar (SIMIC)</p>
             </div>
         </div>
 
@@ -33,30 +33,7 @@
 
     <div class="p-6 sm:p-8 space-y-6">
         <!-- Bloque de Alertas Dinámicas por Sesión -->
-        @if (session('error'))
-            <div class="rounded-xl bg-red-50 p-4 border border-red-200 text-xs">
-                <div class="flex items-start gap-3">
-                    <div class="p-1 rounded-full bg-red-100 text-red-600 shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-red-800">Conflicto de Credenciales Institucionales</h3>
-                        <p class="mt-0.5 text-red-600 leading-relaxed">{{ session('error') }}</p>
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        @if (session('status'))
-            <div class="rounded-xl bg-emerald-50 p-4 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-3">
-                <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="font-medium">{{ session('status') }}</span>
-            </div>
-        @endif
+        @include('partials.alerts')
 
         <!-- Formulario de Inicio de Sesión -->
         <form method="POST" action="{{ url('/login') }}" class="space-y-5">
@@ -72,7 +49,7 @@
                 </div>
                 <div class="relative">
                     <select id="rol" name="rol" required
-                            class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-800 focus:border-sky-600 focus:ring-1 focus:ring-sky-600 focus:outline-none transition-shadow shadow-xs">
+                            class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-800 focus:border-sky-600 focus:ring-1 focus:ring-sky-600 focus:outline-none transition-shadow shadow-xs @error('rol') border-red-500 @enderror">
                         <option value="" disabled {{ old('rol') ? '' : 'selected' }}>Seleccione la atribución operativa</option>
                         <option value="coordinador" {{ old('rol') === 'coordinador' ? 'selected' : '' }}>Superusuario / Coordinador General</option>
                         <option value="tecnico" {{ old('rol') === 'tecnico' ? 'selected' : '' }}>Cuadrilla Técnica Especializada</option>
@@ -84,7 +61,11 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </div>
                 </div>
-                <p class="mt-1 text-[11px] text-slate-400">Seleccione el rol para validar el sufijo del dominio admitido.</p>
+                @error('rol')
+                    <p class="mt-1 text-[11px] text-red-600 font-semibold">{{ $message }}</p>
+                @else
+                    <p class="mt-1 text-[11px] text-slate-400">Seleccione el rol para validar el sufijo del dominio admitido.</p>
+                @enderror
             </div>
 
             <!-- Campo 2: Correo Institucional -->
@@ -98,10 +79,14 @@
                 <input type="email" id="email" name="email" required
                        value="{{ old('email') }}"
                        placeholder="usuario@alumnos.edu.mx"
-                       class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-sky-600 focus:ring-1 focus:ring-sky-600 focus:outline-none transition-shadow shadow-xs">
-                <p class="mt-1 text-[11px] text-slate-400">
-                    Formatos válidos: <span class="font-mono text-slate-500">@alumnos.edu.mx, @profesores.edu.mx, @admin.edu.mx, @tecnicos.edu.mx, @almacen.edu.mx</span>
-                </p>
+                       class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-sky-600 focus:ring-1 focus:ring-sky-600 focus:outline-none transition-shadow shadow-xs @error('email') border-red-500 @enderror">
+                @error('email')
+                    <p class="mt-1 text-[11px] text-red-600 font-semibold">{{ $message }}</p>
+                @else
+                    <p class="mt-1 text-[11px] text-slate-400">
+                        Formatos válidos: <span class="font-mono text-slate-500">@alumnos.edu.mx, @profesores.edu.mx, @admin.edu.mx, @tecnicos.edu.mx, @almacen.edu.mx</span>
+                    </p>
+                @enderror
             </div>
 
             <!-- Campo 3: Contraseña -->
@@ -115,8 +100,11 @@
                 <div class="relative">
                     <input type="password" id="password" name="password" required
                            placeholder="Ingrese su contraseña institucional"
-                           class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-sky-600 focus:ring-1 focus:ring-sky-600 focus:outline-none transition-shadow shadow-xs">
+                           class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-sky-600 focus:ring-1 focus:ring-sky-600 focus:outline-none transition-shadow shadow-xs @error('password') border-red-500 @enderror">
                 </div>
+                @error('password')
+                    <p class="mt-1 text-[11px] text-red-600 font-semibold">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Opciones Adicionales: Recordar Credenciales -->
