@@ -7,6 +7,7 @@ use App\Exceptions\BusinessRuleException;
 use App\Http\Controllers\Controller;
 use App\Models\BitacoraSistema;
 use App\Models\HistorialEstado;
+use App\Models\Material;
 use App\Models\OrdenTrabajo;
 use App\Models\User;
 use App\Services\CoordinacionService;
@@ -218,5 +219,97 @@ class TecnicoController extends Controller
                 ? response()->json(['success' => false, 'message' => $e->getMessage()], 422)
                 : back()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Registra una requisición de insumos o materiales para una orden de trabajo hacia Almacén.
+     *
+     * @param  Request|int|string  $ordenId
+     * @param  array<int, array<string, mixed>>  $insumos
+     */
+    public function solicitarMaterial($ordenId, $insumos = []): RedirectResponse|JsonResponse
+    {
+        $request = null;
+        if ($ordenId instanceof Request) {
+            $request = $ordenId;
+            $ordenId = (int) ($request->input('id_orden') ?? $request->input('orden_id'));
+            $insumos = $request->input('insumos') ?? $request->input('materiales') ?? [];
+        } else {
+            $ordenId = (int) $ordenId;
+        }
+
+        /** @var OrdenTrabajo|null $orden */
+        $orden = OrdenTrabajo::with(['solicitud', 'tecnico'])->find($ordenId);
+        if ($orden === null) {
+            $msg = 'La orden de trabajo indicada para la requisición no existe.';
+
+            return ($request && $request->wantsJson())
+                ? response()->json(['success' => false, 'message' => $msg], 404)
+                : back()->with('error', $msg);
+        }
+
+        if (empty($insumos) || ! is_array($insumos)) {
+            $msg = 'Debe indicar al menos un material o insumo para la requisición.';
+
+            return ($request && $request->wantsJson())
+                ? response()->json(['success' => false, 'message' => $msg], 422)
+                : back()->with('error', $msg);
+        }
+
+        /** @var User $tecnico */
+        $tecnico = Auth::user() ?? $orden->tecnico ?? User::first();
+
+        // Estructuración y validación del detalle de insumos solicitados
+        $itemsProcesados = [];
+        foreach ($insumos as $item) {
+            $idMaterial = (int) ($item['id_material'] ?? 0);
+            $nombreMaterial = trim($item['nombre_material'] ?? $item['nombre'] ?? '');
+            $cantidad = (float) ($item['cantidad'] ?? 1.0);
+
+            if ($idMaterial > 0) {
+                $material = Material::with('existencia')->find($idMaterial);
+                if ($material !== null) {
+                    $nombreMaterial = $material->nombre_material;
+                }
+            }
+
+            $itemsProcesados[] = [
+                'id_material' => $idMaterial > 0 ? $idMaterial : null,
+                'nombre_material' => $nombreMaterial !== '' ? $nombreMaterial : 'Material técnico sin catalogar',
+                'cantidad' => $cantidad,
+                'unidad_medida' => $item['unidad_medida'] ?? 'Pieza',
+                'notas' => $item['notas'] ?? null,
+            ];
+        }
+
+        // Registro de auditoría y requisición oficial en Bitacora del Sistema
+        $bitacora = BitacoraSistema::create([
+            'id_usuario' => $tecnico->id,
+            'accion' => 'REQUISICION_MATERIALES_ALMACEN',
+            'descripcion' => json_encode([
+                'id_orden' => $orden->id_orden,
+                'folio_orden' => 'FOL-'.date('Y').'-'.str_pad((string) ($orden->solicitud?->id_solicitud ?? $orden->id_orden), 4, '0', STR_PAD_LEFT),
+                'id_tecnico' => $tecnico->id,
+                'tecnico_nombre' => $tecnico->name,
+                'total_items' => count($itemsProcesados),
+                'insumos' => $itemsProcesados,
+                'estado_requisicion' => 'pendiente_despacho',
+            ], JSON_UNESCAPED_UNICODE),
+            'fecha' => now(),
+        ]);
+
+        $mensajeExito = 'Requisición de '.count($itemsProcesados)." insumos enviada a Almacén para la orden #{$orden->id_orden}. Lista para validación en ventanilla.";
+
+        if ($request && $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $mensajeExito,
+                'id_orden' => $orden->id_orden,
+                'requisicion_id' => $bitacora->id_bitacora,
+                'items' => $itemsProcesados,
+            ], 201);
+        }
+
+        return back()->with('status', $mensajeExito);
     }
 }
