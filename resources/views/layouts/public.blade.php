@@ -16,7 +16,7 @@
 
     @stack('styles')
 </head>
-<body class="min-h-full font-sans antialiased text-slate-800 bg-[#f4f7fb] selection:bg-[#0b2239] selection:text-white flex flex-col justify-between relative overflow-x-hidden">
+<body class="min-h-full font-sans antialiased text-slate-800 bg-[#f4f7fb] selection:bg-[#0b2239] selection:text-white flex flex-col justify-between relative overflow-x-hidden @hasSection('standalone_auth') border-[10px] sm:border-[14px] border-slate-400/80 rounded-[2rem] min-h-screen @endif">
 
     <!-- Patrón de fondo geométrico sutil (Dot matrix) -->
     <div class="fixed inset-0 pointer-events-none opacity-40 z-0" 
@@ -24,6 +24,8 @@
     </div>
 
     <!-- Barra Superior Institucional Minimalista -->
+    @hasSection('standalone_auth')
+    @else
     <header class="relative z-10 w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -52,9 +54,10 @@
             </div>
         </div>
     </header>
+    @endif
 
     <!-- Contenido Principal -->
-    <main class="relative z-10 flex-grow flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8">
+    <main class="relative z-10 flex-grow flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 @hasSection('standalone_auth') sm:py-12 @endif">
         <div class="w-full @yield('container_width', 'max-w-xl')">
             @if (session('status'))
                 <div class="mb-4 rounded-lg bg-emerald-50 p-4 border border-emerald-200 text-sm text-emerald-800 flex items-center gap-3">
@@ -80,6 +83,8 @@
     </main>
 
     <!-- Pie de Página Institucional y Directorio de Soporte -->
+    @hasSection('standalone_auth')
+    @else
     <footer class="relative z-10 border-t border-slate-200 bg-white/70 backdrop-blur-xs py-6 text-xs text-slate-500">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-2">
@@ -100,6 +105,7 @@
             </div>
         </div>
     </footer>
+    @endif
 
     @stack('scripts')
 </body>

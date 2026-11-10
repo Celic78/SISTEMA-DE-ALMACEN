@@ -65,7 +65,7 @@
                 <nav class="space-y-1">
                     <!-- 1. Dashboard / Resumen -->
                     <a href="{{ route('dashboard', [], false) ?: '#' }}" 
-                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all group {{ request()->routeIs('dashboard') ? 'bg-[#0b2239] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100' }}">
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all group {{ request()->routeIs('dashboard') ? 'bg-sky-50 text-slate-900 border border-dashed border-sky-400' : 'text-slate-700 hover:bg-slate-100' }}">
                         <svg class="w-5 h-5 shrink-0 {{ request()->routeIs('dashboard') ? 'text-teal-400' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
                         </svg>
@@ -74,7 +74,7 @@
 
                     <!-- 2. Reportar Falla (Portal Solicitante) -->
                     <a href="{{ route('reportes.create', [], false) ?: '#' }}" 
-                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all group {{ request()->routeIs('reportes.*') ? 'bg-[#0b2239] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100' }}">
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all group {{ request()->routeIs('reportes.*') ? 'bg-sky-50 text-slate-900 border border-dashed border-sky-400' : 'text-slate-700 hover:bg-slate-100' }}">
                         <svg class="w-5 h-5 shrink-0 {{ request()->routeIs('reportes.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                         </svg>
@@ -83,7 +83,7 @@
 
                     <!-- 3. Panel de Coordinación -->
                     <a href="{{ route('coordinacion.index', [], false) ?: '#' }}" 
-                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all group {{ request()->routeIs('coordinacion.*') ? 'bg-[#0b2239] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100' }}">
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all group {{ request()->routeIs('coordinacion.*') ? 'bg-sky-50 text-slate-900 border border-dashed border-sky-400' : 'text-slate-700 hover:bg-slate-100' }}">
                         <svg class="w-5 h-5 shrink-0 {{ request()->routeIs('coordinacion.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
                         </svg>
@@ -92,7 +92,7 @@
 
                     <!-- 4. Consola Técnica (Cuadrillas) -->
                     <a href="{{ route('cuadrillas.index', [], false) ?: '#' }}" 
-                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all group {{ request()->routeIs('cuadrillas.*') ? 'bg-[#0b2239] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100' }}">
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all group {{ request()->routeIs('cuadrillas.*') ? 'bg-sky-50 text-slate-900 border border-dashed border-sky-400' : 'text-slate-700 hover:bg-slate-100' }}">
                         <svg class="w-5 h-5 shrink-0 {{ request()->routeIs('cuadrillas.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                         </svg>
@@ -101,7 +101,7 @@
 
                     <!-- 5. Inventario & Bitácora (Almacén) -->
                     <a href="{{ route('almacen.index', [], false) ?: '#' }}" 
-                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all group {{ request()->routeIs('almacen.*') ? 'bg-[#0b2239] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100' }}">
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all group {{ request()->routeIs('almacen.*') ? 'bg-sky-50 text-slate-900 border border-dashed border-sky-400' : 'text-slate-700 hover:bg-slate-100' }}">
                         <svg class="w-5 h-5 shrink-0 {{ request()->routeIs('almacen.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                         </svg>
@@ -148,7 +148,11 @@
                 </button>
 
                 <!-- Breadcrumbs Dinámicos -->
-                <nav class="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium truncate">
+                <div class="hidden sm:block min-w-0">
+                    <p class="text-sm font-bold text-slate-900 leading-tight">Sistema Integral de Mantenimiento e Infraestructura Campus</p>
+                    <p class="text-[11px] text-slate-500 font-medium">Campus Central / Dirección de Obras y Servicios</p>
+                </div>
+                <nav class="hidden md:flex items-center gap-2 text-xs text-slate-500 font-medium truncate">
                     <span>Campus Central</span>
                     <span class="text-slate-300">/</span>
                     <span>Dirección de Obras y Servicios</span>

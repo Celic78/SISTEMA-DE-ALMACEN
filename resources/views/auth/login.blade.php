@@ -1,14 +1,16 @@
 @extends('layouts.public')
 
 @section('title', 'Acceso al Sistema')
+@section('standalone_auth', 'true')
+@section('container_width', 'max-w-md')
 
 @section('content')
-<div class="bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
+<div class="bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden">
 
     <!-- Encabezado de la Tarjeta de Acceso -->
-    <div class="p-6 sm:p-8 bg-slate-50/60 border-b border-slate-200">
+    <div class="p-6 sm:p-7 bg-white border-b-0">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-[#0b2239] flex items-center justify-center text-teal-400 shadow-sm shrink-0">
+            <div class="w-11 h-11 rounded-lg bg-[#0b4a5b] flex items-center justify-center text-teal-200 shadow-sm shrink-0">
                 <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                           d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5" />
@@ -16,22 +18,22 @@
             </div>
             <div>
                 <h2 class="text-base font-bold text-slate-900">Universidad Metropolitana</h2>
-                <p class="text-xs text-slate-500 font-medium">Portal de Recursos Materiales y Mantenimiento Escolar (SIMIC)</p>
+                <p class="text-[11px] text-slate-500 font-medium">Portal de Mantenimiento y Recursos Materiales</p>
             </div>
         </div>
 
         <!-- Selector de Modo / Tabs de Acceso -->
-        <div class="mt-6 grid grid-cols-2 gap-2 p-1 bg-slate-200/60 rounded-xl">
-            <button type="button" class="py-2.5 text-xs font-bold text-white bg-[#0b2239] rounded-lg shadow-xs transition-all">
+        <div class="mt-4 grid grid-cols-2 gap-1 p-1 bg-sky-100 rounded-sm">
+            <button type="button" class="py-2 text-xs font-bold text-white bg-[#003b4b] rounded-sm shadow-xs transition-all">
                 Acceso al Sistema
             </button>
-            <a href="{{ url('/') }}" class="text-center py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-transparent hover:bg-white/60 rounded-lg transition-all">
-                Portal Público
+            <a href="{{ url('/') }}" class="text-center py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-transparent hover:bg-white/60 rounded-sm transition-all">
+                Registro de Nuevo Solicitante
             </a>
         </div>
     </div>
 
-    <div class="p-6 sm:p-8 space-y-6">
+    <div class="px-6 pb-6 sm:px-7 sm:pb-7 space-y-5">
         <!-- Bloque de Alertas Dinámicas por Sesión -->
         @include('partials.alerts')
 
