@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # Contenedor 1: Servidor Web PHP + Apache
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_NAME: sistema_almacen
+      DB_USER: app_user
+      DB_PASSWORD: app_password
+
+  # Contenedor 2: Base de Datos MariaDB
+  db:
+    image: mariadb:10.11
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: sistema_almacen
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+volumes:
+  mariadb_data:

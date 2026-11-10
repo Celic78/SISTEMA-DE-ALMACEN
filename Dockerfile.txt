@@ -1,0 +1,20 @@
+# Usa la imagen oficial de PHP 8.2 con Apache integrado
+FROM php:8.2-apache
+
+# Instala extensiones para MariaDB/MySQL y manejo de imágenes
+RUN apt-get update && apt-get install -y \
+    libpng-dev libjpeg-dev libfreetype6-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql gd
+
+# Activa mod_rewrite para rutas amigables en Apache
+RUN a2enmod rewrite
+
+# Copia los archivos de tu proyecto al contenedor
+COPY . /var/www/html/
+
+# Otorga permisos a la carpeta del servidor
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+EXPOSE 80
