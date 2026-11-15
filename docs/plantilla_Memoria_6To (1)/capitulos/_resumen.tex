@@ -1,0 +1,8 @@
+\section*{Resumen.}
+
+En este estudio, se introduce una modificación a la técnica tradicional del controlador de saturación anidado (NSC) utilizada para la estabilización de vehículos aéreos con despegue y aterrizaje vertical (PVTOL-UAV). La propuesta consiste en incorporar funciones hiperbólicas suaves dentro de la configuración anidada del NSC, con el objetivo de desarrollar un algoritmo de control avanzado que optimice tanto el tiempo de convergencia como el rendimiento en lazo cerrado del sistema. 
+
+El enfoque planteado utiliza el error en los estados del sistema como señal de realimentación, permitiendo que la pendiente de la función hiperbólica acotada sea ajustable, lo que facilita la sintonización precisa de la respuesta del controlador. Esta capacidad de ajuste permite una rápida convergencia de los estados hacia los valores deseados, mejorando la estabilidad y la eficiencia del sistema controlado.
+
+Los resultados del estudio se obtienen mediante simulaciones numéricas, donde se realiza una comparación gráfica entre el desempeño del controlador propuesto y el controlador NSC clásico, ambos aplicados al modelo dinámico del PVTOL. Además, se implementa una variante del control anidado difuso sobre el mismo modelo matemático para comparar su desempeño con el del nuevo controlador propuesto, utilizando un valor del parámetro $K = 0.05$. Las simulaciones demuestran que el controlador basado en funciones hiperbólicas suaves, con saturaciones anidadas, logra un tiempo de convergencia significativamente mejorado en comparación con las alternativas tradicionales.
+

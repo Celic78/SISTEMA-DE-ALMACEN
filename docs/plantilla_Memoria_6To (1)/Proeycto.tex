@@ -1,0 +1,144 @@
+\documentclass[12pt, oneside,openright]{report} %Letter,
+\usepackage[colorlinks=true, linkcolor=black, citecolor=blue, urlcolor = blue]{hyperref}
+\usepackage[left=2.54cm, right=2.54cm, top=2.54cm, bottom=2.54cm]{geometry}
+\usepackage[spanish]{babel}
+\usepackage[table]{xcolor}
+\usepackage{algpseudocode}
+\usepackage[T1]{fontenc}
+\usepackage{algorithm}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{pdfpages}
+\usepackage{multirow}
+\usepackage{listings}
+\usepackage{graphics}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{epsfig}
+\usepackage{subfig}
+\usepackage{anyfontsize}
+\usepackage{dirtytalk}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{textcomp}
+\usepackage[utf8]{inputenc}
+\usepackage[backend=biber,style=ieee, sorting=none, style=numeric]{biblatex}
+\bibliography{Referencias}
+
+    
+\lstdefinestyle{mystyle}{
+  keywordstyle=\color{blue},
+  basicstyle=\ttfamily\footnotesize,
+  breakatwhitespace=false,         
+  breaklines=true,                 
+  captionpos=b,                    
+  keepspaces=true,                                 
+  showspaces=false,                
+  showstringspaces=false,
+  showtabs=false,                  
+  tabsize=1
+}\lstset{style=mystyle}
+
+
+\newtheorem{definition}{Definición}
+\newtheorem{theorem}{Teorema}
+
+\renewcommand{\lstlistingname}{Codigo}
+
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\renewcommand{\lstlistlistingname}{Índice de Códigos}
+
+\newenvironment{resumen}
+  {\cleardoublepage\thispagestyle{plain}\vspace*{\stretch{1}}\begin{center}\bfseries Resumen.\end{center}}
+  {\vspace*{\stretch{2}}}
+
+\newenvironment{_abstract1}
+  {\cleardoublepage\thispagestyle{plain}\vspace*{\stretch{1}}\begin{center}\bfseries Abstract1\end{center}}
+  {\vspace*{\stretch{2}}}
+% \makeatletter
+
+% \makeatother
+
+\begin{document}
+
+\makeatletter
+  \renewcommand{\ALG@name}{Algoritmo}
+\makeatother
+  
+\renewcommand{\listtablename}{Índice de tablas}
+\renewcommand{\tablename}{Tabla}
+
+\begin{titlepage}
+\begin{minipage}[l]{3.5cm}
+\includegraphics[width=5cm, height=22.0cm]{imagenes/Imagen_front_UPTex.jpg}
+\end{minipage}
+\vspace*{-3.0cm}
+\begin{minipage}[r]{13.0cm}
+\begin{center}
+\textbf{\LARGE{UNIVERSIDAD POLIT\'{E}CNICA }}\\
+\vspace*{0.5cm}
+\textbf{\LARGE{DE TEXCOCO}} \\
+\vspace*{2.0cm}
+\large{\textbf{NOMBRE DE LA MEMORIA} \\
+
+\vspace*{0.5cm}
+
+\vspace*{0.5cm}
+
+\vspace*{1.0cm}
+\textbf{P R E S E N T A:} \\
+\vspace*{0.5cm}
+\textbf{AUTOR(es):} \\
+
+\textbf{}\\
+\vspace*{1.0cm}
+
+\vspace*{0.5cm}
+
+\vspace*{1.5cm}
+TEXCOCO, EDO. MÉX. \hspace{3cm}ENERO 2025 \\
+\end{center}
+\end{minipage}
+\end{titlepage}
+\spacing{1.5}   
+\pagenumbering{Roman} \setcounter{page}{2}
+
+\newpage
+\input{capitulos/_resumen}\addcontentsline{toc}{chapter}{Resumen}
+\newpage
+\input{capitulos/_resumen2}\addcontentsline{toc}{chapter}{Abstract}
+\newpage 
+
+
+%\begin{spacing}{1.5}
+    \tableofcontents
+    \newpage
+    \listoffigures
+    \newpage
+    \listoftables    
+    \newpage
+    %\input{acronimos.tex}
+%\end{spacing}
+
+
+\pagenumbering{arabic} \setcounter{page}{1} % Números arábigos para el contenido principal
+
+
+\include{capitulos/capitulo1}
+\include{capitulos/capitulo2}
+\include{capitulos/capitulo3}
+\include{capitulos/capitulo4}
+
+
+
+%\bibliographystyle{IEEEtran}
+%\addcontentsline{toc}{chapter}{Referencias}
+
+\printbibliography[title = {Referencias}]
+
+\end{document}
+
