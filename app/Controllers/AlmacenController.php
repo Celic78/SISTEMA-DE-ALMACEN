@@ -80,6 +80,14 @@ class AlmacenController extends Controller
             ]);
         }
 
+        if (view()->exists('almacen.inventario')) {
+            return view('almacen.inventario', [
+                'materiales' => $materiales,
+                'secciones' => $secciones,
+                'metricasAlmacen' => $metricas,
+            ]);
+        }
+
         return view('dashboard', [
             'seccion' => 'almacen',
             'materiales' => $materiales,
@@ -127,6 +135,13 @@ class AlmacenController extends Controller
                 'total_pendientes' => count($requisiciones),
                 'requisiciones' => $requisiciones,
                 'ordenes_activas' => $ordenesListasDespacho,
+            ]);
+        }
+
+        if (view()->exists('almacen.requisiciones')) {
+            return view('almacen.requisiciones', [
+                'requisiciones' => $requisiciones,
+                'ordenesDespacho' => $ordenesListasDespacho,
             ]);
         }
 

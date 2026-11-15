@@ -58,6 +58,10 @@ class CoordinacionController extends Controller
             ]);
         }
 
+        if (view()->exists('coordinacion.dashboard')) {
+            return view('coordinacion.dashboard', compact('metricas', 'ordenesRecientes'));
+        }
+
         return view('dashboard', compact('metricas', 'ordenesRecientes'));
     }
 

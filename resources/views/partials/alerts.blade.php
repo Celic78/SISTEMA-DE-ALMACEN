@@ -34,7 +34,7 @@
     </div>
 @endif
 
-@if ($errors->any())
+@if (isset($errors) && $errors->any())
     <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-900 text-xs shadow-xs space-y-1.5">
         <div class="flex items-center gap-2 font-bold text-amber-800">
             <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

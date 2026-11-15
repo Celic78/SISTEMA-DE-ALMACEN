@@ -1,62 +1,98 @@
 <?php
 
+use App\Controllers\AlmacenController;
+use App\Controllers\AuthController;
+use App\Controllers\CoordinacionController;
+use App\Controllers\PublicController;
+use App\Controllers\ReporteController;
+use App\Controllers\TecnicoController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Portal Público / Acceso Institucional
+| Portal Público / Institucional
 |--------------------------------------------------------------------------
 */
-Route::get('/login', function () {
-    return view('auth.login');
-})->name('login');
-
-Route::post('/logout', function () {
-    return redirect()->route('login');
-})->name('logout');
+Route::get('/', [PublicController::class, 'index'])->name('home');
+Route::get('/contacto', [PublicController::class, 'contacto'])->name('contacto');
 
 /*
 |--------------------------------------------------------------------------
-| Portal Privado (Centro de Mando Operativo)
+| Autenticación Institucional (SIMIC RBAC)
 |--------------------------------------------------------------------------
 */
-Route::get('/', function () {
+Route::get('/login', [AuthController::class, 'login'])->name('login');
+Route::post('/login', [AuthController::class, 'autenticar'])->name('login.post');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+/*
+|--------------------------------------------------------------------------
+| Centro de Mando / Dashboard General
+|--------------------------------------------------------------------------
+*/
+Route::get('/dashboard', function () {
+    if (Auth::check()) {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $authService = app(\App\Services\AuthService::class);
+        $destino = $authService->determinarRutaDestino($user, session('rol_activo'));
+
+        if ($destino !== '/dashboard' && $destino !== route('dashboard', [], false)) {
+            return redirect($destino);
+        }
+    }
+
     return view('dashboard');
 })->name('dashboard');
 
 /*
 |--------------------------------------------------------------------------
-| Módulos Operativos
-|
-| Los siguientes middlewares están registrados en bootstrap/app.php y listos
-| para aplicarse según el nivel de protección requerido:
-| - 'role:NombreRol'                  -> Valida roles (ej. Coordinador, Almacen, Tecnico)
-| - 'email.tipo:alumno,profesor'      -> Valida la categoría de cuenta institucional
-| - 'tecnico.asignado'               -> Restringe gestión de orden al técnico responsable
-| - 'solicitud.propietario'          -> Restringe ver/editar orden al solicitante original
-| - 'orden.aprobada.material'        -> Bloquea despacho de almacén si requiere visto bueno
-| - 'bitacora'                       -> Registra mutaciones (POST, PUT, DELETE) en BD
-| - 'force.json'                     -> Garantiza respuestas JSON en endpoints API
-| - 'security.headers'               -> Encabezados HTTP de seguridad (activo globalmente en web)
+| Módulo de Reportes de Incidencias (Portal Solicitante)
 |--------------------------------------------------------------------------
 */
+Route::prefix('reportes')->name('reportes.')->group(function () {
+    Route::get('/nuevo', [ReporteController::class, 'crear'])->name('create');
+    Route::get('/crear', [ReporteController::class, 'crear'])->name('crear');
+    Route::post('/', [ReporteController::class, 'guardar'])->name('store');
+    Route::get('/', [ReporteController::class, 'index'])->name('index');
+    Route::get('/mis-reportes', [ReporteController::class, 'index'])->name('mis-reportes');
+});
 
-// Reporte de Incidencias (Portal Solicitante)
-Route::get('/reportes/nuevo', function () {
-    return view('dashboard');
-})->name('reportes.create');
+/*
+|--------------------------------------------------------------------------
+| Panel de Coordinación Operativa & Despacho
+|--------------------------------------------------------------------------
+*/
+Route::prefix('coordinacion')->name('coordinacion.')->group(function () {
+    Route::get('/', [CoordinacionController::class, 'dashboard'])->name('index');
+    Route::get('/duplicados', [CoordinacionController::class, 'matrizDuplicados'])->name('duplicados');
+    Route::post('/consolidar-duplicados', [CoordinacionController::class, 'consolidarFolioMaestro'])->name('consolidar');
+    Route::post('/asignar-cuadrilla', [CoordinacionController::class, 'asignarCuadrilla'])->name('asignar');
+});
 
-// Panel de Coordinación (Supervisión y Aprobaciones)
-Route::get('/coordinacion', function () {
-    return view('dashboard');
-})->name('coordinacion.index');
+/*
+|--------------------------------------------------------------------------
+| Consola Técnica (Cuadrillas)
+|--------------------------------------------------------------------------
+*/
+Route::get('/cuadrillas', [TecnicoController::class, 'misOrdenes'])->name('cuadrillas.index');
+Route::prefix('tecnico')->name('tecnico.')->group(function () {
+    Route::get('/mis-ordenes', [TecnicoController::class, 'misOrdenes'])->name('ordenes');
+    Route::post('/actualizar-orden', [TecnicoController::class, 'actualizarEstado'])->name('actualizar');
+    Route::post('/solicitar-material', [TecnicoController::class, 'solicitarMaterial'])->name('solicitar-material');
+    Route::post('/estimar-tiempo', [TecnicoController::class, 'estimarTiempo'])->name('estimar-tiempo');
+});
 
-// Consola Técnica (Cuadrillas)
-Route::get('/cuadrillas', function () {
-    return view('dashboard');
-})->name('cuadrillas.index');
-
-// Inventario & Bitácora de Movimientos (Almacén)
-Route::get('/almacen', function () {
-    return view('dashboard');
-})->name('almacen.index');
+/*
+|--------------------------------------------------------------------------
+| Inventario & Suministros (Almacén)
+|--------------------------------------------------------------------------
+*/
+Route::get('/almacen', [AlmacenController::class, 'inventario'])->name('almacen.index');
+Route::prefix('almacen')->name('almacen.')->group(function () {
+    Route::get('/inventario', [AlmacenController::class, 'inventario'])->name('inventario');
+    Route::get('/requisiciones', [AlmacenController::class, 'requisicionesPendientes'])->name('requisiciones');
+    Route::post('/despachar-vale', [AlmacenController::class, 'despacharMaterial'])->name('despachar');
+    Route::post('/entrada', [AlmacenController::class, 'despacharMaterial'])->name('entrada');
+});

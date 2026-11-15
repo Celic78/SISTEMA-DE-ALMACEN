@@ -66,6 +66,14 @@ class TecnicoController extends Controller
             ]);
         }
 
+        if (view()->exists('tecnico.mis-ordenes')) {
+            return view('tecnico.mis-ordenes', [
+                'ordenes' => $ordenes,
+                'metricasTecnico' => $conteoEstados,
+                'tecnico' => $tecnico,
+            ]);
+        }
+
         return view('dashboard', [
             'seccion' => 'cuadrillas',
             'ordenes' => $ordenes,

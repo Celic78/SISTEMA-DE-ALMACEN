@@ -56,6 +56,10 @@ class ReporteController extends Controller
         $categorias = CategoriaSolicitud::with('subcategorias')->get();
         $prioridades = MatrizPrioridad::orderBy('tiempo_respuesta_hrs')->get();
 
+        if (view()->exists('reportes.mis-reportes')) {
+            return view('reportes.mis-reportes', compact('solicitudes', 'edificios', 'categorias', 'prioridades'));
+        }
+
         return view('reportes.crear', compact('solicitudes', 'edificios', 'categorias', 'prioridades'));
     }
 
