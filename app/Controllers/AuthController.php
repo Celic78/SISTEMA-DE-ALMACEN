@@ -140,4 +140,81 @@ class AuthController extends Controller
 
         return redirect()->route('login')->with('status', 'Sesión institucional cerrada correctamente.');
     }
+
+    /**
+     * Muestra formulario de registro para alumnos y profesores (solicitantes).
+     */
+    public function registro(): \Illuminate\Contracts\View\View|\Illuminate\Http\RedirectResponse
+    {
+        if (Auth::check()) {
+            return redirect()->route('dashboard');
+        }
+        return view('auth.register');
+    }
+
+    /**
+     * Registra un nuevo solicitante (alumno o profesor) con correo institucional.
+     */
+    public function registrar(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'rol'      => ['required', 'string', 'in:alumno,profesor'],
+        ], [
+            'email.unique'       => 'Este correo ya está registrado en el sistema.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'rol.in'             => 'Solo los alumnos y profesores pueden registrarse. El personal técnico y de coordinación es dado de alta por administración.',
+        ]);
+
+        $email  = trim($validated['email']);
+        $rol    = $validated['rol'];
+        $patron = $this->patronesDominios[$rol] ?? null;
+
+        if ($patron === null || preg_match($patron, $email) !== 1) {
+            return back()->withInput($request->only('name', 'email', 'rol'))
+                ->with('error', "El correo ingresado no corresponde al dominio institucional del rol '{$rol}'. Verifique el sufijo requerido.");
+        }
+
+        $usuario = \App\Models\User::create([
+            'name'       => $validated['name'],
+            'email'      => $email,
+            'password'   => \Illuminate\Support\Facades\Hash::make($validated['password']),
+            'email_tipo' => $rol,
+        ]);
+
+        // Asignar rol en tabla usuario_rol
+        $rolModel = \App\Models\Rol::where('nombre_rol', 'like', "%{$rol}%")->first();
+        if ($rolModel) {
+            \App\Models\UsuarioRol::firstOrCreate([
+                'id_usuario' => $usuario->id,
+                'id_rol'     => $rolModel->id_rol,
+            ]);
+        }
+
+        Auth::login($usuario);
+        $request->session()->regenerate();
+        session(['rol_activo' => $rol, 'email_tipo' => $rol]);
+
+        $rutaDestino = $this->authService->determinarRutaDestino($usuario, $rol);
+        return redirect()->intended($rutaDestino)->with('status', "Bienvenido al SIMIC, {$usuario->name}. Tu cuenta ha sido creada exitosamente.");
+    }
+
+    /**
+     * Muestra el formulario "Olvidé mi contraseña".
+     */
+    public function olvidoPassword(): \Illuminate\Contracts\View\View
+    {
+        return view('auth.forgot-password');
+    }
+
+    /**
+     * Envía instrucciones de restablecimiento (en este sistema: muestra mensaje de contacto).
+     */
+    public function enviarResetPassword(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $request->validate(['email' => ['required', 'email']]);
+        return back()->with('status', 'Si tu correo está registrado, el administrador del sistema te enviará instrucciones para restablecer tu contraseña. Contacta a la Mesa de Ayuda TI: Ext. 4300 / 4301.');
+    }
 }
