@@ -37,7 +37,7 @@ class TecnicoService
     ): OrdenTrabajo {
         $this->validarTecnicoAsignado($orden, $tecnico);
 
-        if ($orden->requiere_aprobacion && mb_strtolower((string) $orden->estado) !== 'aprobada') {
+        if ($orden->requiere_aprobacion && $orden->estado !== 'aprobada' && $orden->aprobaciones()->latest('id_aprobacion')->value('estado') !== 'aprobada') {
             throw new ApprovalRequiredException(
                 'No se puede iniciar la orden: requiere aprobación previa de Coordinación.'
             );

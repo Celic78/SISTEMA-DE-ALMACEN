@@ -99,7 +99,7 @@ class AlmacenService
         }
 
         // VALIDACIÓN DE NEGOCIO: Bloqueo de almacén si requiere visto bueno y no está aprobada
-        if ($orden->requiere_aprobacion && mb_strtolower((string) $orden->estado) !== 'aprobada') {
+        if ($orden->requiere_aprobacion && $orden->estado !== 'aprobada' && $orden->aprobaciones()->latest('id_aprobacion')->value('estado') !== 'aprobada') {
             throw new ApprovalRequiredException(
                 "Despacho bloqueado: La orden #{$orden->id_orden} requiere visto bueno previo de Coordinación."
             );
@@ -117,7 +117,7 @@ class AlmacenService
                 }
 
                 $material = Material::with('existencia')->findOrFail($idMaterial);
-                $existencia = $material->existencia;
+                $existencia = Existencia::where('id_material', $idMaterial)->lockForUpdate()->first();
 
                 if ($existencia === null) {
                     throw new BusinessRuleException(
@@ -192,6 +192,7 @@ class AlmacenService
                 ['cantidad_disponible' => 0.00, 'stock_minimo' => 5.00]
             );
 
+            $existencia = Existencia::whereKey($existencia->getKey())->lockForUpdate()->firstOrFail();
             $nuevoStock = (float) $existencia->cantidad_disponible + $cantidad;
             $existencia->update([
                 'cantidad_disponible' => $nuevoStock,

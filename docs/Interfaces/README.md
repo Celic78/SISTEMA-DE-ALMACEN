@@ -1,4 +1,13 @@
-# Sistema de Diseño y Guía de Estilos UI — SIMIC
+# Interfaces SIMIC · Versiones de referencia
+
+- **[Versión 1](Version%201/README.md):** imágenes originales y guía institucional anterior, conservadas como referencia histórica.
+- **[Versión 2](Version%202/README.md):** manual de usuario, paleta clara y oscura, mapa de las 19 vistas y flujos implementados. Es la referencia vigente del sistema.
+
+Las imágenes originales también se conservan en esta carpeta para mantener compatibles las referencias existentes. La numeración de versiones corresponde al diseño de las interfaces.
+
+---
+
+## Guía original · Versión 1
 > **SIMIC**: Sistema Integral de Mantenimiento e Infraestructura Campus  
 > **Institución**: Universidad Metropolitana — Dirección de Obras y Servicios / Almacén Central  
 > **Documento**: Especificación Técnica y Visual de Interfaces (`/docs/Interfaces`)

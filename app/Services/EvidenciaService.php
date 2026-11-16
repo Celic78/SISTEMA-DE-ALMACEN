@@ -150,7 +150,7 @@ class EvidenciaService
         $mime = $archivo->getMimeType() ?: 'application/octet-stream';
         $tipo = $this->mimesPermitidos[$mime] ?? 'documento';
 
-        $extension = $archivo->getClientOriginalExtension() ?: 'bin';
+        $extension = $archivo->guessExtension() ?: 'bin';
         $nombreArchivo = Str::uuid()->toString().'.'.$extension;
 
         $path = $archivo->storeAs($carpeta, $nombreArchivo, $this->disco);

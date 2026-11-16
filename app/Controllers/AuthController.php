@@ -106,6 +106,17 @@ class AuthController extends Controller
                 ->with('error', $mensajeError);
         }
 
+        $perfilAutorizado = match ($rolNormalizado) {
+            'coordinador' => $usuario->isCoordinador(),
+            'tecnico' => $usuario->isTecnico(),
+            'almacen' => $usuario->isAlmacen(),
+            'alumno', 'profesor' => $usuario->email_tipo === $rolNormalizado,
+            default => false,
+        };
+        if (! $perfilAutorizado) {
+            return back()->withInput($request->only('email', 'rol'))->with('error', 'El perfil seleccionado no está autorizado para esta cuenta.');
+        }
+
         // PASO 4: Iniciar sesión y fijar parámetros en la sesión de Laravel
         Auth::login($usuario, $request->boolean('remember'));
         $request->session()->regenerate();
