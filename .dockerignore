@@ -1,0 +1,8 @@
+.env*
+!.env.example
+.git
+vendor
+node_modules
+database/*.sqlite
+storage/logs/*
+storage/app/*
