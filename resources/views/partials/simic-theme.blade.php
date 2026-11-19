@@ -1,0 +1,1 @@
+<button type="button" class="theme-control" data-theme-toggle aria-label="Cambiar a modo oscuro" aria-pressed="false"><span>Claro</span><span class="theme-track" aria-hidden="true"><span></span></span><span>Oscuro</span></button>
