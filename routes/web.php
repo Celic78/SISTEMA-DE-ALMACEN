@@ -5,6 +5,7 @@ use App\Controllers\AuthController;
 use App\Controllers\ReporteController;
 use App\Controllers\TecnicoController;
 use App\Exceptions\BusinessRuleException;
+use App\Http\Middleware\RequirePersonalPassword;
 use App\Models\BitacoraSistema;
 use App\Models\CategoriaSolicitud;
 use App\Models\Existencia;
@@ -44,7 +45,9 @@ Route::middleware('guest')->group(function (): void {
     Route::post('/restablecer', [AuthController::class, 'restablecer'])->middleware('throttle:5,1')->name('password.update');
 });
 
-Route::middleware('auth')->group(function (): void {
+Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): void {
+    Route::get('/primer-acceso', [AuthController::class, 'mostrarCambioInicial'])->name('password.initial.edit');
+    Route::post('/primer-acceso', [AuthController::class, 'cambiarPasswordInicial'])->middleware('throttle:10,1')->name('password.initial.update');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/panel', function (Request $request, AuthService $authService): RedirectResponse {
         return redirect()->to($authService->determinarRutaDestino($request->user(), $request->session()->get('rol_activo')));
@@ -89,6 +92,7 @@ Route::middleware('auth')->group(function (): void {
     });
 
     Route::middleware('role:Coordinador')->group(function (): void {
+        Route::post('/coordinacion/personal', [AuthController::class, 'crearPersonal'])->name('coordinacion.personal.store');
         Route::get('/coordinacion', function (Request $request): View {
             $estados = match ($request->query('estado')) {
                 'nuevas' => ['abierta', 'requiere_aprobacion'],

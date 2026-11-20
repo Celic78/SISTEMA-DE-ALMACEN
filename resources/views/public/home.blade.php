@@ -5,11 +5,15 @@
 @section('content')
     <section class="hero" aria-labelledby="inicio-titulo">
         <div class="hero-copy">
-            <h1 id="inicio-titulo">Un seguimiento con atención y cuidado</h1>
+            <h1 id="inicio-titulo">Mantenimiento escolar con seguimiento</h1>
             <p>Plataforma institucional para el reporte de fallas, mantenimiento preventivo y control de materiales en aulas, mobiliario e instalaciones.</p>
+            @auth
+                <a class="button button-primary" href="{{ route('dashboard') }}">Ir a mi panel</a>
+            @else
+                <a class="button button-primary" href="{{ route('login') }}">Iniciar sesión</a>
+            @endauth
         </div>
         <aside class="hero-guide" aria-labelledby="hero-guide-title">
-            <p class="eyebrow">SIRE-M</p>
             <h2 id="hero-guide-title">Del reporte a la solución</h2>
             <ol>
                 <li>Registra la ubicación y la falla.</li>

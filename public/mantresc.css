@@ -1,19 +1,24 @@
 :root {
-    --background: #EDF2F3;
+    --ink-black: #01161eff;
+    --dark-teal: #124559ff;
+    --air-force-blue: #598392ff;
+    --ash-grey: #aec3b0ff;
+    --beige: #eff6e0ff;
+    --background: color-mix(in srgb, var(--beige) 34%, #f3f6f7);
     --surface: #FFFFFF;
-    --input-fill: #F3F7F8;
-    --ink: #0B2632;
-    --heading: #0B2632;
-    --muted: #446575;
-    --line: #D6E2E6;
+    --input-fill: color-mix(in srgb, var(--ash-grey) 14%, white);
+    --ink: var(--ink-black);
+    --heading: var(--ink-black);
+    --muted: var(--dark-teal);
+    --line: color-mix(in srgb, var(--air-force-blue) 28%, white);
     --topbar: #FFFFFF;
-    --topbar-text: #0B2632;
-    --accent: #557F8E;
-    --button: #12495D;
+    --topbar-text: var(--ink-black);
+    --accent: var(--air-force-blue);
+    --button: var(--dark-teal);
     --button-text: #FFFFFF;
-    --active: #E8F0F2;
-    --active-text: #153E4F;
-    --toggle-track: #F3F7F8;
+    --active: color-mix(in srgb, var(--ash-grey) 38%, white);
+    --active-text: var(--dark-teal);
+    --toggle-track: color-mix(in srgb, var(--ash-grey) 14%, white);
     --error-fill: #F8E7E7;
     --error-text: #912A25;
     --sidebar: var(--topbar);
@@ -30,21 +35,21 @@
     color-scheme: light;
 }
 :root[data-theme="dark"] {
-    --background: #02191F;
-    --surface: #0E2D3A;
-    --input-fill: #092630;
-    --ink: #EDF6F8;
-    --heading: #EDF6F8;
-    --muted: #ADC6D0;
-    --line: #254754;
-    --topbar: #0E2D3A;
-    --topbar-text: #EDF6F8;
-    --accent: #AFC5B5;
-    --button: #AFC5B5;
-    --button-text: #092630;
-    --active: #214553;
-    --active-text: #EDF6F8;
-    --toggle-track: #092630;
+    --background: var(--ink-black);
+    --surface: color-mix(in srgb, var(--dark-teal) 55%, var(--ink-black));
+    --input-fill: color-mix(in srgb, var(--dark-teal) 30%, var(--ink-black));
+    --ink: var(--beige);
+    --heading: var(--beige);
+    --muted: var(--ash-grey);
+    --line: color-mix(in srgb, var(--air-force-blue) 55%, var(--ink-black));
+    --topbar: color-mix(in srgb, var(--dark-teal) 55%, var(--ink-black));
+    --topbar-text: var(--beige);
+    --accent: var(--ash-grey);
+    --button: var(--ash-grey);
+    --button-text: color-mix(in srgb, var(--dark-teal) 30%, var(--ink-black));
+    --active: var(--dark-teal);
+    --active-text: var(--beige);
+    --toggle-track: color-mix(in srgb, var(--dark-teal) 30%, var(--ink-black));
     --error-fill: #442A2D;
     --error-text: #FFD1CB;
     --positive: var(--accent);
@@ -342,4 +347,158 @@ nav a[aria-current="page"] { background: var(--active); color: var(--active-text
 .access-tabs a[aria-current="page"] { font-weight: 800; }
 @media (max-width: 760px) {
     .access-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Shared surface and control treatments */
+.site-public, .workspace-body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    accent-color: var(--button);
+}
+.site-header, .site-home .site-header {
+    width: 100%;
+    margin: 0;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+}
+.site-home .navigation, .navigation {
+    width: min(1360px, calc(100% - 3rem));
+    padding: .9rem 0;
+}
+.site-home .brand, .brand {
+    font-size: 1.35rem;
+    letter-spacing: .07em;
+    font-weight: 750;
+}
+.site-home .brand-mark, .brand-mark { width: 2.25rem; height: 2.25rem; }
+.site-home .navigation nav > a:not(.button) { border: 0; }
+.navigation .theme-button, .workspace-topbar .theme-button {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .35rem .45rem;
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+    font-size: .8rem;
+}
+.button, .access-tabs a { border-radius: .4rem; }
+.button { align-items: center; min-height: 2.65rem; font-size: .9rem; }
+.button:hover { outline: none; box-shadow: inset 0 0 0 100px rgb(89 131 146 / 12%); }
+.button:focus-visible, .theme-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.hero {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+    align-items: center;
+    gap: clamp(2rem, 7vw, 6rem);
+    padding: clamp(2.5rem, 7vw, 6rem) 0 clamp(2rem, 5vw, 4rem);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+}
+.site-home .hero h1 {
+    max-width: 19ch;
+    margin: 0 0 1.25rem;
+    font-size: clamp(2.25rem, 4.8vw, 4rem);
+    text-wrap: balance;
+}
+.hero-copy > p { max-width: 48ch; }
+.hero-copy .button { margin-top: 1.5rem; }
+.hero-guide {
+    padding: clamp(1.5rem, 4vw, 2.75rem);
+    border: 0;
+    border-radius: .65rem;
+    background: var(--ash-grey);
+    color: var(--ink-black);
+}
+.hero-guide h2 { margin-top: 0; }
+.hero-guide li::marker { color: var(--dark-teal); }
+.notices {
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border: 1px solid var(--line);
+    border-radius: .65rem;
+    background: var(--surface);
+}
+.notices h2 { font-size: 1.25rem; letter-spacing: -.02em; }
+.notices > p { margin: 0; }
+.service-grid article, .notices article { border-radius: .65rem; }
+.access-layout {
+    align-items: start;
+    gap: clamp(1.5rem, 5vw, 4.5rem);
+    margin-top: clamp(1.5rem, 5vw, 4rem);
+    padding: 0;
+    overflow: visible;
+    border: 0;
+}
+.access-welcome { padding: clamp(.25rem, 2vw, 1.5rem) 0; }
+.access-welcome h2 { max-width: 19ch; text-wrap: balance; }
+.access-layout .access-card { border-radius: .65rem; }
+.access-card label { font-size: .9rem; }
+.access-card input, .access-card select { min-height: 2.8rem; border-radius: .35rem; }
+.access-tabs a { font-size: .875rem; }
+.workspace-sidebar {
+    gap: 1.5rem;
+    padding: 1.5rem 1.25rem;
+    background: var(--ink-black);
+    color: var(--beige);
+    border-color: var(--dark-teal);
+}
+.workspace-profile {
+    padding-block: .9rem;
+    border-block: 1px solid var(--dark-teal);
+}
+.workspace-profile span { color: var(--ash-grey); }
+.workspace-sidebar nav a { font-size: .9rem; }
+.workspace-sidebar nav a[aria-current="page"] {
+    background: var(--ash-grey);
+    color: var(--ink-black);
+}
+.workspace-controls { margin-top: auto; }
+.workspace-content {
+    min-width: 0;
+    padding: clamp(1rem, 3vw, 3rem);
+}
+.workspace-topbar {
+    padding: .75rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: .55rem;
+    background: var(--topbar);
+}
+.workspace-content h1 { letter-spacing: -.035em; }
+.workspace-content :is(input, select, textarea) { max-width: 100%; }
+.workspace-content thead { background: var(--input-fill); color: var(--muted); }
+.workspace-content tr + tr { border-top: 1px solid var(--line); }
+@media (max-width: 760px) {
+    .site-home .navigation, .navigation { width: calc(100% - 1.5rem); }
+    .hero { grid-template-columns: minmax(0, 1fr); }
+    .site-home .hero h1, .access-welcome h2 { max-width: none; }
+    .workspace-sidebar { gap: .9rem; }
+}
+
+.login-form #access-password {
+    padding-inline-end: 3rem;
+}
+.password-toggle {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: .55rem;
+    border: 0;
+    border-radius: .35rem;
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+}
+.password-toggle:hover { background: var(--active); }
+.password-toggle svg { width: 100%; }
+.password-toggle[aria-pressed="false"] .password-toggle-slash { display: none; }
+.password-field {
+    position: relative;
+    margin-bottom: 1rem;
+}
+.access-card .password-field label { margin-bottom: 0; }
+.password-field .password-toggle {
+    position: absolute;
+    inset-inline-end: .3rem;
+    inset-block-end: .28rem;
 }

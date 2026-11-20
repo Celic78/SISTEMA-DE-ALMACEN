@@ -50,7 +50,7 @@
         @if (session('status'))
             <p class="form-message" role="status">{{ session('status') }}</p>
         @endif
-        <form method="POST" action="{{ route($destino) }}">
+        <form method="POST" action="{{ route($destino) }}" @if (request()->routeIs('login')) class="login-form" @endif>
             @csrf
             @if ($restablecer)
                 <input type="hidden" name="token" value="{{ request()->route('token') }}">
@@ -58,17 +58,27 @@
             @if ($registro)
                 <label>Rol institucional
                     <select name="rol" required>
-                        <option value="">Selecciona tu rol</option>
-                        @foreach (['alumno' => 'Alumno', 'profesor' => 'Profesor', 'coordinador' => 'Coordinador', 'tecnico' => 'Técnico', 'almacen' => 'Almacén'] as $valor => $etiqueta)
-                            <option value="{{ $valor }}" @selected(old('rol') === $valor)>{{ $etiqueta }}</option>
-                        @endforeach
+                        <option value="alumno">Alumno</option>
                     </select>
                 </label>
                 <label>Nombre completo <input name="name" value="{{ old('name') }}" autocomplete="name" required></label>
             @endif
             <label>Correo institucional <input type="text" inputmode="email" name="email" value="{{ old('email', $restablecer ? request()->query('email') : '') }}" autocomplete="email" required></label>
             @unless ($recuperacion)
-                <label>Contraseña <input type="password" name="password" autocomplete="{{ $registro || $restablecer ? 'new-password' : 'current-password' }}" required></label>
+                <div class="password-field">
+                    <label for="access-password">Contraseña
+                        <input id="access-password" type="password" name="password" autocomplete="{{ $registro || $restablecer ? 'new-password' : 'current-password' }}" required>
+                    </label>
+                    @if (request()->routeIs('login'))
+                        <button type="button" class="password-toggle" data-password-toggle aria-controls="access-password" aria-label="Mostrar contraseña" aria-pressed="false" hidden>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/>
+                                <circle cx="12" cy="12" r="2.5"/>
+                                <path class="password-toggle-slash" d="m3 3 18 18"/>
+                            </svg>
+                        </button>
+                    @endif
+                </div>
             @endunless
             @if ($registro || $restablecer)
                 <label>Confirma tu contraseña <input type="password" name="password_confirmation" autocomplete="new-password" required></label>

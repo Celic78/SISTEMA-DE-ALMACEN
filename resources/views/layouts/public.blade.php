@@ -30,7 +30,7 @@
                 @else
                     <a class="button button-primary" href="{{ route('login') }}">Iniciar sesión</a>
                 @endauth
-                <button class="theme-button" type="button" data-theme-toggle aria-label="Cambiar tema">◐</button>
+                <button class="theme-button" type="button" data-theme-toggle aria-label="Tema oscuro" aria-pressed="false"><span>Claro</span><span class="theme-track" aria-hidden="true"></span><span>Oscuro</span></button>
             </nav>
             @endif
         </div>

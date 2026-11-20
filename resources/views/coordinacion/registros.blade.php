@@ -5,6 +5,24 @@
 @section('content')
     <h1 class="mb-4 text-2xl font-bold">Solicitudes de acceso</h1>
     @include('partials.alerts')
+    <section class="mb-6 rounded-xl border border-slate-200 bg-white p-4" aria-labelledby="alta-personal">
+        <h2 id="alta-personal" class="font-bold">Crear cuenta de personal</h2>
+        <p class="mt-1 text-sm text-slate-600">Entrega la contraseña temporal a su titular. El sistema le pedirá cambiarla al entrar por primera vez.</p>
+        <form method="POST" action="{{ route('coordinacion.personal.store') }}" class="mt-3 grid gap-3 sm:grid-cols-2">
+            @csrf
+            <label class="grid gap-1">Nombre completo <input class="rounded border p-2" name="name" maxlength="255" value="{{ old('name') }}" required></label>
+            <label class="grid gap-1">Rol institucional
+                <select class="rounded border p-2" name="rol" required>
+                    <option value="tecnico" @selected(old('rol') === 'tecnico')>Técnico</option>
+                    <option value="profesor" @selected(old('rol') === 'profesor')>Profesor</option>
+                    <option value="almacen" @selected(old('rol') === 'almacen')>Almacén</option>
+                </select>
+            </label>
+            <label class="grid gap-1">Correo institucional <input class="rounded border p-2" name="email" type="email" maxlength="254" value="{{ old('email') }}" required></label>
+            <label class="grid gap-1">Contraseña temporal <input class="rounded border p-2" name="password" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+            <div><button class="button button-primary">Crear cuenta</button></div>
+        </form>
+    </section>
     <section class="mb-6 rounded-xl border border-slate-200 bg-white p-4">
         <h2 class="font-bold">Publicar aviso de mantenimiento</h2>
         <form method="POST" action="{{ route('coordinacion.avisos') }}" class="mt-3 flex flex-wrap items-end gap-3">
