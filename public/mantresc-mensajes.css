@@ -1,0 +1,168 @@
+.workspace-account {
+    display: grid;
+    gap: .1rem;
+}
+
+.workspace-account small,
+.messages-inbox small {
+    color: var(--muted);
+}
+
+.messages-count:not([hidden]) {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.6rem;
+    padding: .12rem .38rem;
+    border-radius: 999px;
+    background: var(--button);
+    color: var(--button-text);
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.messages-nav .messages-count { margin-inline-start: .35rem; }
+
+.messages-inbox {
+    display: grid;
+    grid-template-columns: minmax(11rem, 24%) minmax(0, 1fr);
+    min-height: min(38rem, 75vh);
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.messages-contacts {
+    min-width: 0;
+    border-inline-end: 1px solid var(--line);
+    background: var(--input-fill);
+}
+
+.messages-contacts h1,
+.messages-conversation header {
+    margin: 0;
+    padding: .9rem 1.1rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.messages-contacts h1,
+.messages-conversation h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.messages-contacts nav {
+    max-height: 65vh;
+    overflow: auto;
+}
+
+.messages-contacts a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .75rem 1rem;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    overflow-wrap: anywhere;
+}
+
+.messages-contacts a:hover,
+.messages-contacts a[aria-current="page"] {
+    background: var(--active);
+    color: var(--active-text);
+}
+
+.messages-contacts a small { display: block; }
+
+.messages-conversation {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-height: min(38rem, 75vh);
+    min-width: 0;
+}
+
+.messages-history {
+    display: flex;
+    flex-direction: column;
+    gap: .8rem;
+    height: clamp(14rem, 52vh, 32rem);
+    overflow: auto;
+    padding: 1rem;
+}
+
+.messages-history-pages {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+.messages-history-pages a { text-decoration: underline; }
+
+.message-bubble {
+    align-self: flex-start;
+    max-width: 82%;
+    padding: .65rem .8rem;
+    border: 1px solid var(--line);
+    border-radius: .25rem .85rem .85rem;
+    background: var(--input-fill);
+    overflow-wrap: anywhere;
+}
+
+.message-bubble p {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.message-bubble time {
+    display: block;
+    margin-top: .25rem;
+    color: var(--muted);
+    font-size: .75rem;
+    text-align: end;
+}
+
+.message-outgoing {
+    align-self: flex-end;
+    background: var(--active);
+    color: var(--active-text);
+    border-radius: .85rem .25rem .85rem .85rem;
+}
+
+.messages-empty,
+.messages-contacts nav > p {
+    padding: 1rem;
+    color: var(--muted);
+}
+
+.messages-select { place-self: center; }
+
+.messages-compose {
+    display: flex;
+    align-items: end;
+    gap: .75rem;
+    padding: .8rem 1rem;
+    border-top: 1px solid var(--line);
+}
+
+.messages-compose textarea {
+    flex: 1;
+    min-width: 0;
+    max-height: 12rem;
+    padding: .55rem .7rem;
+    border-radius: .55rem;
+    resize: vertical;
+}
+
+@media (max-width: 640px) {
+    .messages-inbox { grid-template-columns: minmax(0, 1fr); }
+    .messages-contacts {
+        border-inline-end: 0;
+        border-bottom: 1px solid var(--line);
+    }
+    .messages-contacts nav { max-height: 11rem; }
+    .messages-conversation { min-height: 0; }
+    .message-bubble { max-width: 92%; }
+}

@@ -18,6 +18,7 @@ use App\Services\AlmacenService;
 use App\Services\AuthService;
 use App\Services\CoordinacionService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -54,24 +55,41 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
     })->name('dashboard');
 
     Route::middleware('role:Coordinador,Tecnico,Almacen')->group(function (): void {
+        Route::get('/mensajes/pendientes', function (Request $request): JsonResponse {
+            return response()->json(['total' => $request->user()->mensajesOperativosSinLeer()->count()])
+                ->header('Cache-Control', 'private, no-store');
+        })->name('mensajes.pendientes');
+
         Route::get('/mensajes', function (Request $request): View {
             $usuario = $request->user();
-            $contactos = User::whereIn('email_tipo', array_diff(['coordinador', 'tecnico', 'almacen'], [$usuario->email_tipo]))
-                ->where('estado_registro', 'aprobado')->where('id', '!=', $usuario->getKey())
-                ->orderBy('name')->get(['id', 'name', 'email_tipo']);
-            $contacto = $contactos->firstWhere('id', $request->integer('contacto'));
-            $mensajes = $contacto ? DB::table('mensajes_operativos')
-                ->whereIn('remitente', [$usuario->getKey(), $contacto->getKey()])
-                ->whereIn('destinatario', [$usuario->getKey(), $contacto->getKey()])
-                ->orderByDesc('id')->paginate(20)->withQueryString() : null;
+            $contactos = $usuario->contactosOperativos()->orderBy('name')->get(['id', 'name', 'email_tipo']);
+            $contacto = $request->has('contacto') ? $contactos->find($request->integer('contacto')) : null;
+            abort_if($request->has('contacto') && ! $contacto, 404);
 
-            return view('partials.mensajes', compact('contactos', 'contacto', 'mensajes'));
+            $mensajes = null;
+            if ($contacto) {
+                $mensajes = DB::table('mensajes_operativos')
+                    ->where(fn ($query) => $query->where('remitente', $usuario->getKey())->where('destinatario', $contacto->getKey()))
+                    ->orWhere(fn ($query) => $query->where('remitente', $contacto->getKey())->where('destinatario', $usuario->getKey()))
+                    ->latest('id')->simplePaginate(30)->withQueryString();
+
+                if ($mensajes->isNotEmpty() && $mensajes->onFirstPage()) {
+                    $usuario->mensajesOperativosSinLeer()
+                        ->where('remitente', $contacto->getKey())
+                        ->where('id', '<=', $mensajes->getCollection()->first()->id)
+                        ->update(['leido' => now()]);
+                }
+            }
+
+            $pendientes = $usuario->mensajesOperativosSinLeer()
+                ->selectRaw('remitente, COUNT(*) as total')->groupBy('remitente')->pluck('total', 'remitente');
+            $contactos = $contactos->sortByDesc(fn (User $persona): int => (int) ($pendientes[$persona->id] ?? 0));
+
+            return view('partials.mensajes', compact('contactos', 'contacto', 'mensajes', 'pendientes'));
         })->name('mensajes.index');
         Route::post('/mensajes/{contacto}', function (Request $request, User $contacto): RedirectResponse {
             $datos = $request->validate(['mensaje' => ['required', 'string', 'max:2000']]);
-            abort_unless($contacto->estado_registro === 'aprobado'
-                && $contacto->email_tipo !== $request->user()->email_tipo
-                && in_array($contacto->email_tipo, ['coordinador', 'tecnico', 'almacen'], true), 403);
+            abort_unless($request->user()->contactosOperativos()->whereKey($contacto->getKey())->exists(), 403);
             DB::table('mensajes_operativos')->insert([
                 'remitente' => $request->user()->getKey(),
                 'destinatario' => $contacto->getKey(),
