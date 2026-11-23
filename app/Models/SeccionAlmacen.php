@@ -10,6 +10,13 @@ class SeccionAlmacen extends Model
 {
     use HasFactory;
 
+    public const CATEGORIAS = [
+        'insumos' => ['nombre' => 'Insumos', 'etiqueta' => 'Insumos y Papelería'],
+        'mobiliario' => ['nombre' => 'Muebles', 'etiqueta' => 'Mobiliario y Equipos'],
+        'herramientas' => ['nombre' => 'Herramientas', 'etiqueta' => 'Herramientas'],
+        'electricos' => ['nombre' => 'Cables', 'etiqueta' => 'Cables y Eléctricos'],
+    ];
+
     protected $table = 'secciones_almacen';
 
     protected $primaryKey = 'id_seccion';

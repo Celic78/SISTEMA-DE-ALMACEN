@@ -28,7 +28,7 @@ class ReporteController extends Controller
 
     public function crear(): View
     {
-        return view('reportes.crear');
+        return view('reportes.crear', ['momentoDelReporte' => now()]);
     }
 
     public function guardar(Request $request): RedirectResponse
@@ -39,6 +39,12 @@ class ReporteController extends Controller
             'fecha_hallazgo' => ['required', 'date_format:Y-m-d\TH:i'],
             'evidencia' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
         ]);
+
+        if (substr($datos['fecha_hallazgo'], 0, 10) !== now()->toDateString()) {
+            throw ValidationException::withMessages([
+                'fecha_hallazgo' => 'La fecha del hallazgo debe ser la de hoy.',
+            ]);
+        }
 
         $datos['id_categoria'] = CategoriaSolicitud::firstOrCreate(['nombre_categoria' => CategoriaSolicitud::INMUEBLE])->getKey();
         $archivo = $request->file('evidencia');

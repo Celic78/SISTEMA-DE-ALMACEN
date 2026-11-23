@@ -17,7 +17,11 @@
             <div data-step>
                 <h2>2. Descripción</h2>
                 <label>Fecha y hora del hallazgo
-                    <input type="datetime-local" name="fecha_hallazgo" value="{{ old('fecha_hallazgo') }}" required>
+                    @php($hoy = $momentoDelReporte->toDateString())
+                    @php($fechaAnterior = old('fecha_hallazgo'))
+                    <input type="datetime-local" name="fecha_hallazgo"
+                        min="{{ $hoy }}T00:00" max="{{ $hoy }}T23:59"
+                        value="{{ is_string($fechaAnterior) && str_starts_with($fechaAnterior, $hoy.'T') ? $fechaAnterior : $momentoDelReporte->format('Y-m-d\TH:i') }}" required>
                 </label>
                 <label>Describe la falla del inmueble
                     <textarea name="descripcion_falla" rows="4" placeholder="Ej. La puerta del aula no cierra correctamente." minlength="10" maxlength="2000" class="rounded-lg border border-slate-300 p-2" required>{{ old('descripcion_falla') }}</textarea>

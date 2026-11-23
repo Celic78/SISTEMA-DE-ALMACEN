@@ -555,3 +555,124 @@ nav a[aria-current="page"] { background: var(--active); color: var(--active-text
 }
 .pending-notification:hover { text-decoration: underline; }
 .pending-notification:focus-visible { outline-color: currentColor; }
+.workspace-identity {
+    display: grid;
+    gap: .1rem;
+}
+
+.workspace-identity span {
+    color: var(--muted);
+    font-size: .85rem;
+}
+
+.workspace-profile-link {
+    color: var(--muted);
+    font-size: .85rem;
+    text-decoration: underline;
+}
+
+.workspace-sidebar.warehouse-sidebar {
+    background: #202a38;
+    color: #eef4fa;
+    border-color: #394858;
+    --sidebar-text: #eef4fa;
+}
+
+.warehouse-sidebar .brand,
+.warehouse-sidebar nav a { color: #eef4fa; }
+
+.warehouse-sidebar nav a {
+    display: flex;
+    gap: .55rem;
+    align-items: center;
+    font-size: .86rem;
+}
+
+.warehouse-sidebar nav [aria-hidden] {
+    width: 1.05rem;
+    text-align: center;
+    color: #aec9e5;
+}
+
+.warehouse-sidebar nav a[aria-current="page"] {
+    background: #34475c;
+    color: #fff;
+    box-shadow: inset 3px 0 #83b4e9;
+}
+
+.warehouse-table-wrap { overflow-x: auto; }
+
+.warehouse-items {
+    display: grid;
+    gap: .65rem;
+    max-width: 48rem;
+}
+
+.warehouse-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .45rem .85rem;
+    padding: .65rem .85rem;
+}
+
+.warehouse-item p { color: var(--muted); font-size: .85rem; }
+
+.warehouse-item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.warehouse-item-actions .button {
+    min-height: 2.25rem;
+    padding: .3rem .65rem;
+}
+
+.warehouse-item-options {
+    grid-column: 1 / -1;
+    font-size: .8rem;
+    color: var(--muted);
+}
+
+.warehouse-item-options summary { cursor: pointer; }
+.warehouse-item-options form { margin-top: .45rem; }
+
+.warehouse-operation {
+    max-width: 34rem;
+    padding: clamp(1rem, 4vw, 1.75rem);
+    display: grid;
+    gap: .7rem;
+}
+
+.warehouse-operation > a { justify-self: start; }
+.warehouse-operation form { display: grid; gap: .85rem; }
+.warehouse-operation input {
+    display: block;
+    width: 100%;
+    margin-top: .25rem;
+    padding: .55rem .7rem;
+    border-radius: .5rem;
+}
+.warehouse-operation button { justify-self: end; }
+
+@media (max-width: 480px) {
+    .warehouse-item { grid-template-columns: minmax(0, 1fr); }
+}
+
+.warehouse-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: start;
+}
+
+.warehouse-table :is(th, td) {
+    padding: .75rem 1rem;
+    border-bottom: 1px solid var(--line);
+    text-align: start;
+}
+
+.workspace-content .button:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}

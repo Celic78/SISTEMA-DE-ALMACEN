@@ -21,6 +21,10 @@ class MovimientoMaterial extends Model
         'tipo_movimiento',
         'cantidad',
         'fecha_movimiento',
+        'clase_salida',
+        'motivo',
+        'prestado_a',
+        'devuelto_en',
     ];
 
     /**
@@ -33,6 +37,7 @@ class MovimientoMaterial extends Model
         return [
             'cantidad' => 'decimal:2',
             'fecha_movimiento' => 'datetime',
+            'devuelto_en' => 'datetime',
         ];
     }
 

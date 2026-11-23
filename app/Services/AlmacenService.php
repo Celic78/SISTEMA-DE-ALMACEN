@@ -19,6 +19,49 @@ use Illuminate\Support\Facades\DB;
 
 class AlmacenService
 {
+    public function registrarSalidaInventario(Material $material, float $cantidad, User $usuario, string $motivo, ?string $prestadoA): void
+    {
+        DB::transaction(function () use ($material, $cantidad, $usuario, $motivo, $prestadoA): void {
+            $material = Material::whereKey($material->getKey())->lockForUpdate()->firstOrFail();
+            $existencia = $material->existencia()->lockForUpdate()->first();
+            $libres = round((float) ($existencia?->cantidad_disponible ?? 0) - (float) ($existencia?->cantidad_reservada ?? 0), 2);
+
+            if ($existencia === null || $cantidad <= 0 || $cantidad > $libres) {
+                throw new BusinessRuleException('La cantidad solicitada supera las existencias libres.');
+            }
+
+            $existencia->decrement('cantidad_disponible', $cantidad);
+            MovimientoMaterial::create([
+                'id_material' => $material->getKey(),
+                'id_usuario_almacen' => $usuario->getKey(),
+                'tipo_movimiento' => 'salida',
+                'clase_salida' => $prestadoA === null ? 'reposicion' : 'prestamo',
+                'cantidad' => $cantidad,
+                'motivo' => $motivo,
+                'prestado_a' => $prestadoA,
+                'fecha_movimiento' => now(),
+            ]);
+        });
+    }
+
+    public function devolverPrestamo(MovimientoMaterial $movimiento, User $usuario): void
+    {
+        DB::transaction(function () use ($movimiento, $usuario): void {
+            $prestamo = MovimientoMaterial::whereKey($movimiento->getKey())->lockForUpdate()->firstOrFail();
+            if ($prestamo->tipo_movimiento !== 'salida' || $prestamo->clase_salida !== 'prestamo' || $prestamo->devuelto_en !== null) {
+                throw new BusinessRuleException('Este movimiento no es un préstamo pendiente de devolución.');
+            }
+
+            $entrada = $this->registrarEntradaStock(
+                $prestamo->id_material,
+                (float) $prestamo->cantidad,
+                $usuario,
+                'Devolución del préstamo #'.$prestamo->getKey(),
+            );
+            $prestamo->update(['devuelto_en' => $entrada->fecha_movimiento]);
+        });
+    }
+
     /**
      * Step 1: Pre-notice by Coordinator scheduling material collection for a work order.
      */
@@ -204,6 +247,7 @@ class AlmacenService
                 'id_orden' => null,
                 'id_usuario_almacen' => $usuarioAlmacen->id,
                 'tipo_movimiento' => 'entrada',
+                'motivo' => $motivo,
                 'cantidad' => $cantidad,
                 'fecha_movimiento' => now(),
             ]);

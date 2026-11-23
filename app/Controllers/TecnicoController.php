@@ -18,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class TecnicoController extends Controller
 {
@@ -39,7 +40,7 @@ class TecnicoController extends Controller
         $estados = match ($request->query('estado')) {
             'terminadas' => ['resuelta', 'concluida', 'cerrada'],
             'proceso' => ['en_proceso', 'en_espera', 'en_pruebas'],
-            default => ['asignada', 'aprobada', 'requiere_aprobacion', 'en_proceso', 'en_espera', 'en_pruebas'],
+            default => ['asignada', 'aprobada', 'requiere_aprobacion'],
         };
 
         $ordenes = OrdenTrabajo::with([
@@ -164,7 +165,9 @@ class TecnicoController extends Controller
                 ]);
             }
 
-            return back()->with('status', $mensaje);
+            return redirect()->route('cuadrillas.index', [
+                'estado' => $nuevoEstado === 'resuelta' ? 'terminadas' : 'proceso',
+            ])->with('status', $mensaje);
 
         } catch (BusinessRuleException|ApprovalRequiredException $e) {
             return $request->wantsJson()
@@ -198,13 +201,19 @@ class TecnicoController extends Controller
         $inicio = ! empty($validated['fecha_inicio']) ? Carbon::parse($validated['fecha_inicio']) : now();
 
         try {
-            $ordenActualizada = $this->tecnicoService->iniciarOrdenConCompromiso(
-                $orden,
-                $tecnico,
-                (int) $validated['horas_estimadas_sla'],
-                $inicio,
-                $validated['comentarios'] ?? null
-            );
+            $ordenActualizada = DB::transaction(function () use ($orden, $tecnico, $validated, $inicio): OrdenTrabajo {
+                $orden = OrdenTrabajo::whereKey($orden->getKey())->lockForUpdate()->firstOrFail();
+                abort_unless((int) $orden->id_tecnico === (int) $tecnico->id, 403);
+                abort_unless(in_array($orden->estado, ['asignada', 'aprobada'], true), 409);
+
+                return $this->tecnicoService->iniciarOrdenConCompromiso(
+                    $orden,
+                    $tecnico,
+                    (int) $validated['horas_estimadas_sla'],
+                    $inicio,
+                    $validated['comentarios'] ?? null
+                );
+            });
 
             $mensaje = "Compromiso SLA registrado: {$validated['horas_estimadas_sla']} hrs estimadas para la orden #{$orden->id_orden}. Labores iniciadas.";
 
@@ -218,7 +227,7 @@ class TecnicoController extends Controller
                 ]);
             }
 
-            return back()->with('status', $mensaje);
+            return redirect()->route('cuadrillas.index', ['estado' => 'proceso'])->with('status', $mensaje);
 
         } catch (ApprovalRequiredException|BusinessRuleException $e) {
             return $request->wantsJson()

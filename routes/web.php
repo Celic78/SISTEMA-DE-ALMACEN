@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\AlmacenService;
 use App\Services\AuthService;
 use App\Services\CoordinacionService;
+use App\Services\TecnicoService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,6 +48,7 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): void {
+    Route::view('/perfil', 'partials.perfil')->name('perfil.show');
     Route::get('/primer-acceso', [AuthController::class, 'mostrarCambioInicial'])->name('password.initial.edit');
     Route::post('/primer-acceso', [AuthController::class, 'cambiarPasswordInicial'])->middleware('throttle:10,1')->name('password.initial.update');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -270,17 +272,23 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
 
     Route::middleware('role:Tecnico')->group(function (): void {
         Route::get('/cuadrillas', [TecnicoController::class, 'misOrdenes'])->name('cuadrillas.index');
-        Route::post('/tecnico/ordenes/{orden}/material', function (Request $request, OrdenTrabajo $orden): RedirectResponse {
+        Route::post('/tecnico/ordenes/{orden}/material', function (Request $request, OrdenTrabajo $orden, TecnicoService $tecnicoService): RedirectResponse {
             $datos = $request->validate([
                 'id_material' => ['required', 'integer', 'exists:materiales,id_material'],
                 'cantidad' => ['required', 'numeric', 'min:0.01', 'max:999999'],
                 'recoleccion' => ['required', 'date_format:Y-m-d\TH:i', 'after:now'],
                 'nota' => ['nullable', 'string', 'max:500'],
             ]);
-            DB::transaction(function () use ($datos, $orden, $request): void {
+            DB::transaction(function () use ($datos, $orden, $request, $tecnicoService): void {
                 $orden = OrdenTrabajo::whereKey($orden->getKey())->lockForUpdate()->firstOrFail();
                 abort_unless((int) $orden->id_tecnico === (int) $request->user()->getKey()
                     && in_array($orden->estado, ['asignada', 'aprobada', 'en_proceso', 'en_espera'], true), 403);
+
+                $porAceptar = in_array($orden->estado, ['asignada', 'aprobada'], true);
+                if ($porAceptar) {
+                    abort_unless($orden->tieneAprobacion(), 409);
+                    $estimacion = $request->validate(['horas_estimadas_sla' => ['required', 'integer', 'min:1', 'max:168']]);
+                }
 
                 $materialId = (int) $datos['id_material'];
                 $pendientes = BitacoraSistema::where('accion', 'REQUISICION_MATERIALES_ALMACEN')
@@ -304,6 +312,10 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
                 if ($existencia === null || round((float) $existencia->cantidad_disponible - (float) $existencia->cantidad_reservada, 2) < $cantidad) {
                     throw ValidationException::withMessages(['cantidad' => 'La cantidad solicitada supera el stock libre.']);
                 }
+                if ($porAceptar) {
+                    $tecnicoService->iniciarOrdenConCompromiso($orden, $request->user(), (int) $estimacion['horas_estimadas_sla']);
+                }
+
                 $existencia->increment('cantidad_reservada', $cantidad);
 
                 BitacoraSistema::create([
@@ -324,7 +336,7 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
                 ]);
             });
 
-            return back()->with('status', 'Solicitud enviada a Almacén.');
+            return redirect()->route('cuadrillas.index', ['estado' => 'proceso'])->with('status', 'Solicitud enviada a Almacén.');
         })->name('cuadrillas.material');
         Route::post('/tecnico/estimar', [TecnicoController::class, 'estimarTiempo'])->name('cuadrillas.estimar');
         Route::post('/tecnico/actualizar-orden', [TecnicoController::class, 'actualizarEstado'])->name('cuadrillas.actualizar');
@@ -332,6 +344,11 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
 
     Route::middleware('role:Almacen')->group(function (): void {
         Route::get('/almacen', [AlmacenController::class, 'inventario'])->name('almacen.index');
+        Route::get('/almacen/movimientos', [AlmacenController::class, 'movimientos'])->name('almacen.movimientos');
+        Route::get('/almacen/material/{material}/{tipo}', [AlmacenController::class, 'operacion'])
+            ->whereIn('tipo', ['entrada', 'salida'])->name('almacen.material.operacion');
+        Route::post('/almacen/material/{material}/salida', [AlmacenController::class, 'salida'])->name('almacen.material.salida');
+        Route::post('/almacen/movimientos/{movimiento}/devolver', [AlmacenController::class, 'devolverPrestamo'])->name('almacen.movimientos.devolver');
         Route::get('/almacen/inventario', fn (): RedirectResponse => redirect()->route('almacen.index'));
         Route::post('/almacen/material', function (Request $request): RedirectResponse {
             $datos = $request->validate([
@@ -353,7 +370,9 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
             DB::transaction(function () use ($material): void {
                 $actual = Material::whereKey($material->getKey())->lockForUpdate()->firstOrFail();
                 $existencia = $actual->existencia()->lockForUpdate()->first();
-                if ((float) ($existencia?->cantidad_disponible ?? 0) > 0 || $actual->movimientos()->exists()) {
+                if ((float) ($existencia?->cantidad_disponible ?? 0) > 0
+                    || (float) ($existencia?->cantidad_reservada ?? 0) > 0
+                    || $actual->movimientos()->exists()) {
                     throw ValidationException::withMessages(['material' => 'El material conserva existencias o movimientos registrados.']);
                 }
                 $actual->delete();

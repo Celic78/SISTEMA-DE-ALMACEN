@@ -36,8 +36,14 @@ class AlmacenController extends Controller
         $busqueda = $request->input('buscar');
         $idSeccion = $request->input('id_seccion');
         $soloBajoStock = $request->boolean('bajo_stock');
+        $claveCategoria = $request->query('categoria');
+        abort_unless($claveCategoria === null || (is_string($claveCategoria) && isset(SeccionAlmacen::CATEGORIAS[$claveCategoria])), 404);
+        $categoria = SeccionAlmacen::CATEGORIAS[$claveCategoria] ?? null;
+        $secciones = SeccionAlmacen::withCount('materiales')->get();
+        $seccionActual = $categoria ? $secciones->firstWhere('nombre_seccion', $categoria['nombre']) : null;
 
         $query = Material::with(['seccion', 'existencia'])
+            ->withExists('movimientos')
             ->when($busqueda, function ($q, $term) {
                 $q->where(function ($sub) use ($term) {
                     $sub->where('nombre_material', 'like', "%{$term}%")
@@ -45,7 +51,8 @@ class AlmacenController extends Controller
                         ->orWhere('especificacion', 'like', "%{$term}%");
                 });
             })
-            ->when($idSeccion, fn ($q, $sec) => $q->where('id_seccion', $sec))
+            ->when($categoria, fn ($q) => $q->where('id_seccion', $seccionActual?->getKey() ?? 0),
+                fn ($q) => $q->when($idSeccion, fn ($q, $sec) => $q->where('id_seccion', $sec)))
             ->when($soloBajoStock, function ($q) {
                 $q->whereHas('existencia', function ($sub) {
                     $sub->whereColumn('cantidad_disponible', '<=', 'stock_minimo');
@@ -61,8 +68,6 @@ class AlmacenController extends Controller
         $totalSecciones = SeccionAlmacen::count();
         $itemsBajoStock = Existencia::whereColumn('cantidad_disponible', '<=', 'stock_minimo')->count();
         $itemsAgotados = Existencia::where('cantidad_disponible', '<=', 0)->count();
-
-        $secciones = SeccionAlmacen::withCount('materiales')->get();
 
         $metricas = [
             'total_materiales' => $totalMateriales,
@@ -85,7 +90,62 @@ class AlmacenController extends Controller
             'materiales' => $materiales,
             'secciones' => $secciones,
             'metricasAlmacen' => $metricas,
+            'categoria' => $categoria,
+            'seccionActual' => $seccionActual,
         ]);
+    }
+
+    public function movimientos(Request $request): View
+    {
+        $tipo = $request->query('tipo', 'salida');
+        $movimientos = MovimientoMaterial::with(['material', 'usuarioAlmacen'])
+            ->when(in_array($tipo, ['entrada', 'salida'], true), fn ($query) => $query->where('tipo_movimiento', $tipo))
+            ->latest('fecha_movimiento')
+            ->latest('id_movimiento')
+            ->paginate(20)->withQueryString();
+
+        return view('almacen.movimientos', compact('movimientos', 'tipo'));
+    }
+
+    public function operacion(Request $request, Material $material, string $tipo): View
+    {
+        $material->load(['seccion', 'existencia']);
+        $prestamo = $tipo === 'salida' && $material->esHerramienta();
+        $titulo = $tipo === 'entrada' ? 'Agregar existencias' : ($prestamo ? 'Préstamo' : 'Reposición');
+        $categoria = $request->query('categoria');
+        $volver = is_string($categoria) && isset(SeccionAlmacen::CATEGORIAS[$categoria])
+            ? ['categoria' => $categoria]
+            : [];
+
+        return view('almacen.operacion', compact('material', 'tipo', 'prestamo', 'titulo', 'volver'));
+    }
+
+    public function salida(Request $request, Material $material): RedirectResponse
+    {
+        $datos = $request->validate([
+            'cantidad' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:999999'],
+            'motivo' => ['required', 'string', 'max:250'],
+            'prestado_a' => $material->esHerramienta() ? ['required', 'string', 'max:150'] : ['exclude'],
+        ], [], ['prestado_a' => 'persona que recibe el préstamo']);
+
+        try {
+            $this->almacenService->registrarSalidaInventario($material, (float) $datos['cantidad'], $request->user(), $datos['motivo'], $datos['prestado_a'] ?? null);
+        } catch (BusinessRuleException $exception) {
+            return back()->withErrors(['cantidad' => $exception->getMessage()])->withInput();
+        }
+
+        return redirect()->route('almacen.movimientos', ['tipo' => 'salida'])->with('status', 'Salida registrada.');
+    }
+
+    public function devolverPrestamo(Request $request, MovimientoMaterial $movimiento): RedirectResponse
+    {
+        try {
+            $this->almacenService->devolverPrestamo($movimiento, $request->user());
+        } catch (BusinessRuleException $exception) {
+            return back()->withErrors(['prestamo' => $exception->getMessage()]);
+        }
+
+        return redirect()->route('almacen.movimientos', ['tipo' => 'salida'])->with('status', 'Devolución registrada.');
     }
 
     /**

@@ -13,21 +13,28 @@
 <body class="workspace-body">
     @php
         $persona = auth()->user();
+        $rolPerfil = match ($persona->email_tipo) {
+            'alumno' => 'Alumno',
+            'profesor' => 'Profesor',
+            'coordinador' => 'Coordinador',
+            'tecnico' => 'Técnico',
+            'almacen' => 'Almacén',
+            default => $persona->isAdmin() ? 'Administrador' : 'Solicitante',
+        };
         $enlaces = match ($persona->email_tipo) {
             'coordinador' => ['coordinacion.index' => 'Incidencias', 'coordinacion.cuadrillas' => 'Cuadrillas', 'coordinacion.registros' => 'Perfiles', 'coordinacion.avisos.index' => 'Avisos de mantenimiento', 'reportes.create' => 'Nuevo reporte', 'reportes.index' => 'Mis reportes'],
             'tecnico' => ['cuadrillas.index' => 'Órdenes asignadas'],
-            'almacen' => ['almacen.index' => 'Inventario', 'almacen.requisiciones' => 'Requisiciones'],
+            'almacen' => [],
             default => ['reportes.create' => 'Nuevo reporte', 'reportes.index' => 'Mis reportes', 'reportes.estado' => 'Estado de reporte'],
         };
     @endphp
     <div class="workspace">
-        <aside class="workspace-sidebar" aria-label="Panel de usuario">
+        <aside class="workspace-sidebar {{ $persona->email_tipo === 'almacen' ? 'warehouse-sidebar' : '' }}" aria-label="Panel de usuario">
             <a class="brand" href="{{ route('home') }}"><img class="brand-mark" src="{{ asset('mantresc-logo.png') }}" alt="" width="40" height="40"> SIRE-M</a>
-            <div class="workspace-profile">
-                <strong>{{ $persona->name }}</strong>
-                <span>{{ $persona->email }}</span>
-            </div>
             <nav aria-label="Módulos">
+                @if ($persona->email_tipo === 'almacen')
+                    @include('almacen.navegacion')
+                @endif
                 @foreach ($enlaces as $nombreRuta => $etiqueta)
                     @php
                         $filtrosPropios = match ($nombreRuta) {
@@ -58,7 +65,11 @@
         <main class="workspace-content">
             <header class="workspace-topbar">
                 <span class="workspace-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($persona->name, 0, 1)) }}</span>
-                <strong>{{ $persona->name }}</strong>
+                <div class="workspace-identity">
+                    <strong>{{ $persona->name }}</strong>
+                    <span>{{ $rolPerfil }}</span>
+                </div>
+                <a href="{{ route('perfil.show') }}" class="workspace-profile-link" @if (request()->routeIs('perfil.show')) aria-current="page" @endif>Ver perfil</a>
                 <button type="button" class="theme-button" data-theme-toggle aria-label="Tema oscuro" aria-pressed="false">
                     <span>Claro</span>
                     <span class="theme-track" aria-hidden="true"></span>

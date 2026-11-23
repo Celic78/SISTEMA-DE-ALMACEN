@@ -5,11 +5,13 @@ namespace Tests\Feature;
 use App\Models\BitacoraSistema;
 use App\Models\CategoriaSolicitud;
 use App\Models\Material;
+use App\Models\MovimientoMaterial;
 use App\Models\OrdenTrabajo;
 use App\Models\SeccionAlmacen;
 use App\Models\User;
 use App\Services\CoordinacionService;
 use App\Services\SolicitudService;
+use Database\Seeders\InventarioDemoSeeder;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -20,6 +22,87 @@ use Tests\TestCase;
 class ExampleTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_warehouse_records_replacements_loans_and_returns(): void
+    {
+        $this->freezeSecond();
+        $this->seed(InventarioDemoSeeder::class);
+        $almacenista = User::factory()->create(['email_tipo' => 'almacen']);
+        $mueble = Material::where('codigo_qr_barras', 'DEMO-MOBILIARIO-1')->sole();
+        $herramienta = Material::where('codigo_qr_barras', 'DEMO-HERRAMIENTAS-1')->sole();
+        $salidas = route('almacen.movimientos', ['tipo' => 'salida']);
+
+        $this->actingAs($almacenista)->get(route('almacen.index', ['categoria' => 'mobiliario']))
+            ->assertOk()->assertSee('Reposición');
+        $this->get(route('almacen.index', ['categoria' => 'herramientas']))
+            ->assertOk()->assertSee('Préstamos');
+        $this->get(route('almacen.material.operacion', ['material' => $mueble, 'tipo' => 'salida']))
+            ->assertOk()->assertSee('Reposición')->assertDontSee('name="prestado_a"', false);
+        $this->get(route('almacen.material.operacion', ['material' => $herramienta, 'tipo' => 'salida']))
+            ->assertOk()->assertSee('name="prestado_a"', false);
+
+        $mueble->existencia()->update(['cantidad_reservada' => 12]);
+        $this->post(route('almacen.material.salida', $mueble), ['cantidad' => 3, 'motivo' => 'Cambio de sillas'])
+            ->assertSessionHasErrors('cantidad');
+        $this->assertDatabaseCount('movimientos_material', 0);
+        $this->post(route('almacen.material.salida', $mueble), ['cantidad' => 2, 'motivo' => 'Cambio de sillas'])
+            ->assertRedirect($salidas);
+        $this->assertDatabaseHas('existencias', ['id_material' => $mueble->id_material, 'cantidad_disponible' => 12, 'cantidad_reservada' => 12]);
+
+        $this->post(route('almacen.material.salida', $herramienta), ['cantidad' => 1, 'motivo' => 'Reparar una puerta'])
+            ->assertSessionHasErrors('prestado_a');
+        $this->post(route('almacen.material.salida', $herramienta), [
+            'cantidad' => 1, 'motivo' => 'Reparar una puerta', 'prestado_a' => 'Pablo Cruz',
+        ])->assertRedirect($salidas);
+        $this->assertDatabaseHas('existencias', ['id_material' => $herramienta->id_material, 'cantidad_disponible' => 7]);
+        $this->get($salidas)->assertOk()->assertSee('Salida')->assertSee('Cambio de sillas')
+            ->assertSee('Reparar una puerta')->assertSee('Pablo Cruz')->assertSee('Registrar devolución');
+
+        $prestamo = MovimientoMaterial::where('clase_salida', 'prestamo')->sole();
+        $devolver = route('almacen.movimientos.devolver', $prestamo);
+        $this->post($devolver)->assertRedirect($salidas);
+        $this->assertDatabaseHas('movimientos_material', [
+            'id_movimiento' => $prestamo->id_movimiento, 'devuelto_en' => now()->toDateTimeString(),
+        ]);
+        $this->get($salidas)->assertOk()->assertDontSee('Registrar devolución');
+        $this->get(route('almacen.movimientos', ['tipo' => 'entrada']))->assertOk()->assertSee('Devolución del préstamo');
+        $this->post($devolver)->assertSessionHasErrors('prestamo');
+        $this->assertDatabaseHas('existencias', ['id_material' => $herramienta->id_material, 'cantidad_disponible' => 8]);
+        $this->assertDatabaseCount('movimientos_material', 3);
+    }
+
+    public function test_warehouse_categories_offer_inventory_actions_and_private_profile(): void
+    {
+        $this->seed(InventarioDemoSeeder::class);
+        $almacenista = User::factory()->create(['email_tipo' => 'almacen']);
+        $this->actingAs($almacenista);
+
+        foreach (SeccionAlmacen::CATEGORIAS as $clave => $categoria) {
+            $url = route('almacen.index', ['categoria' => $clave]);
+            $this->get($url)->assertOk()->assertSee($categoria['etiqueta'])
+                ->assertSee('Agregar material')->assertSee('Eliminar material')
+                ->assertDontSee($almacenista->email)
+                ->assertViewHas('materiales', fn ($materiales): bool => $materiales->total() === 5
+                    && $materiales->every(fn (Material $material): bool => $material->seccion->nombre_seccion === $categoria['nombre']));
+        }
+
+        $insumos = route('almacen.index', ['categoria' => 'insumos']);
+        $this->from($insumos)->post(route('almacen.material.store'), [
+            'nombre_material' => 'Cuaderno de prueba',
+            'id_seccion' => SeccionAlmacen::where('nombre_seccion', 'Insumos')->value('id_seccion'),
+            'unidad_medida' => 'pieza',
+        ])->assertRedirect($insumos)->assertSessionHasNoErrors();
+        $nuevo = Material::where('nombre_material', 'Cuaderno de prueba')->sole();
+        $this->get($insumos)->assertOk()->assertSee($nuevo->nombre_material);
+        $this->from($insumos)->delete(route('almacen.material.destroy', $nuevo))->assertRedirect($insumos)->assertSessionHasNoErrors();
+        $this->assertModelMissing($nuevo);
+
+        $conStock = Material::where('codigo_qr_barras', 'DEMO-INSUMOS-1')->sole();
+        $this->delete(route('almacen.material.destroy', $conStock))->assertSessionHasErrors('material');
+        $this->assertModelExists($conStock);
+        $this->get(route('almacen.requisiciones'))->assertOk();
+        $this->get(route('perfil.show'))->assertOk()->assertSee($almacenista->email)->assertSee('Almacén');
+    }
 
     public function test_the_application_shows_the_public_portal_before_login(): void
     {
@@ -124,6 +207,7 @@ class ExampleTest extends TestCase
 
     public function test_a_report_can_be_assigned_and_started_only_after_required_approval(): void
     {
+        $this->freezeSecond();
         $this->seed();
         Storage::fake('public');
         $alumna = User::where('email', 'ana.torres@alumno.mx')->firstOrFail();
@@ -134,12 +218,22 @@ class ExampleTest extends TestCase
             'ubicacion_libre' => 'Edificio A, salón 204',
             'id_categoria' => CategoriaSolicitud::firstOrFail()->getKey(),
             'descripcion_falla' => 'La puerta del aula no cierra correctamente.',
-            'fecha_hallazgo' => '2026-11-17T09:00',
+            'fecha_hallazgo' => now()->format('Y-m-d\TH:i'),
         ];
 
         $this->actingAs($alumna)->get(route('reportes.create'))->assertOk()
             ->assertSee('Describe la falla del inmueble')
+            ->assertSee('min="'.now()->toDateString().'T00:00"', false)
+            ->assertSee('max="'.now()->toDateString().'T23:59"', false)
+            ->assertSee('value="'.$datos['fecha_hallazgo'].'"', false)
             ->assertDontSee('name="id_categoria"', false);
+        foreach ([now()->subDay(), now()->addDays(2)] as $fechaInvalida) {
+            $this->post(route('reportes.store'), array_replace($datos, [
+                'fecha_hallazgo' => $fechaInvalida->format('Y-m-d\TH:i'),
+                'evidencia' => UploadedFile::fake()->createWithContent('falla.png', $imagen),
+            ]))->assertSessionHasErrors('fecha_hallazgo');
+        }
+        $this->assertDatabaseCount('solicitudes', 0);
         $this->post(route('reportes.store'), $datos + [
             'evidencia' => UploadedFile::fake()->createWithContent('falla.png', $imagen),
         ])->assertSessionHasNoErrors()->assertRedirect(route('reportes.index'));
@@ -167,7 +261,8 @@ class ExampleTest extends TestCase
             'decision' => 'aprobar',
             'motivo' => 'Revisión de seguridad completada.',
         ])->assertSessionHasNoErrors();
-        $this->actingAs($tecnico)->post(route('cuadrillas.estimar'), $inicio)->assertSessionHasNoErrors();
+        $this->actingAs($tecnico)->post(route('cuadrillas.estimar'), $inicio)
+            ->assertSessionHasNoErrors()->assertRedirect(route('cuadrillas.index', ['estado' => 'proceso']));
         $this->assertDatabaseHas('ordenes_trabajo', ['id_orden' => $orden->getKey(), 'estado' => 'en_proceso', 'horas_estimadas_sla' => 6]);
         $this->actingAs($alumna)->get(route('reportes.estado'))->assertOk()
             ->assertSeeInOrder(['Reporte enviado', 'Técnico asignado', 'En mantenimiento', 'Solucionado y terminado'])
@@ -178,8 +273,10 @@ class ExampleTest extends TestCase
             'id_orden' => $orden->getKey(),
             'estado' => 'resuelta',
             'evidencias' => [UploadedFile::fake()->createWithContent('solucion.png', $imagen)],
-        ])->assertSessionHasNoErrors();
-        $this->get(route('cuadrillas.index', ['estado' => 'terminadas']))->assertOk()->assertSee('Evidencia de cierre');
+        ])->assertSessionHasNoErrors()->assertRedirect(route('cuadrillas.index', ['estado' => 'terminadas']));
+        $this->assertDatabaseHas('ordenes_trabajo', ['id_orden' => $orden->getKey(), 'fecha_fin' => now()->toDateTimeString()]);
+        $this->get(route('cuadrillas.index', ['estado' => 'terminadas']))->assertOk()
+            ->assertSee('Evidencia de cierre')->assertSee(now()->format('d/m/Y H:i'));
         $this->actingAs($coordinadora)->patch(route('coordinacion.ordenes.costo', $orden), [
             'costo_real' => 125.50,
             'justificacion_costo_real' => 'Se reemplazó el cable de alimentación.',
@@ -249,9 +346,19 @@ class ExampleTest extends TestCase
             'id_material' => $material->getKey(),
             'cantidad' => 4,
             'recoleccion' => now()->addDay()->format('Y-m-d\TH:i'),
+            'horas_estimadas_sla' => 3,
         ];
 
-        $this->actingAs($tecnico)->post(route('cuadrillas.material', $orden), $requisicion)->assertSessionHasNoErrors();
+        $this->actingAs($tecnico)->get(route('cuadrillas.index'))->assertOk()->assertSee('Se debe reemplazar un cable.');
+        $this->get(route('cuadrillas.index', ['estado' => 'proceso']))->assertOk()->assertDontSee('Se debe reemplazar un cable.');
+        $this->post(route('cuadrillas.material', $orden), array_replace($requisicion, ['cantidad' => 11]))
+            ->assertSessionHasErrors('cantidad');
+        $this->assertSame('asignada', $orden->refresh()->estado);
+        $this->post(route('cuadrillas.material', $orden), $requisicion)
+            ->assertSessionHasNoErrors()->assertRedirect(route('cuadrillas.index', ['estado' => 'proceso']));
+        $this->assertSame('en_proceso', $orden->refresh()->estado);
+        $this->get(route('cuadrillas.index'))->assertOk()->assertDontSee('Se debe reemplazar un cable.');
+        $this->get(route('cuadrillas.index', ['estado' => 'proceso']))->assertOk()->assertSee('Se debe reemplazar un cable.');
         $this->post(route('cuadrillas.material', $orden), $requisicion)->assertSessionHasErrors([
             'id_material' => 'Ya existe una requisición pendiente de este material para la orden.',
         ]);
@@ -269,6 +376,9 @@ class ExampleTest extends TestCase
             'cantidad_disponible' => 7,
             'cantidad_reservada' => 0,
         ]);
+        $this->get(route('almacen.movimientos', ['tipo' => 'salida']))->assertOk()
+            ->assertSee('Cable de prueba')->assertViewHas('movimientos', fn ($movimientos): bool => $movimientos->total() === 1
+                && $movimientos->first()->tipo_movimiento === 'salida');
         $this->actingAs($coordinadora)->get(route('coordinacion.index'))->assertOk()
             ->assertSee('Cable de prueba · 3.00 metro');
     }

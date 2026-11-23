@@ -1,6 +1,6 @@
 @extends('layouts.private')
 
-@section('title', 'Requisiciones')
+@section('title', 'Reportes y Requisiciones')
 
 @section('content')
     <h1 class="mb-4 text-2xl font-bold">Requisiciones de materiales</h1>

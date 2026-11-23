@@ -24,6 +24,11 @@ class Material extends Model
         'codigo_qr_barras',
     ];
 
+    public function esHerramienta(): bool
+    {
+        return $this->seccion?->nombre_seccion === SeccionAlmacen::CATEGORIAS['herramientas']['nombre'];
+    }
+
     /**
      * Get the warehouse section where the material is assigned.
      */
