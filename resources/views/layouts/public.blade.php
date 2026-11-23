@@ -11,7 +11,7 @@
     <header class="site-header">
         <div class="site-container navigation">
             <a class="brand" href="{{ route('home') }}">
-                <img class="brand-mark" src="{{ asset('mantresc-logo.png') }}" alt="" width="40" height="40">
+                <img class="brand-mark" src="{{ asset('mantresc-logo.png') }}" alt="" width="72" height="72">
                 <span>
                     SIRE-M
                     @if (request()->routeIs('home'))

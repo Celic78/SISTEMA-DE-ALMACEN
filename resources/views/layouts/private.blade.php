@@ -31,7 +31,7 @@
     <div class="workspace">
         <aside class="workspace-sidebar" aria-label="Panel de usuario">
             <div class="workspace-sidebar-header">
-                <a class="brand" href="{{ route('home') }}"><img class="brand-mark" src="{{ asset('mantresc-logo.png') }}" alt="" width="40" height="40"> SIRE-M</a>
+                <a class="brand" href="{{ route('home') }}"><img class="brand-mark" src="{{ asset('mantresc-logo.png') }}" alt="" width="72" height="72"> SIRE-M</a>
                 <button class="button workspace-menu-toggle" type="button" aria-controls="workspace-menu" aria-expanded="true" hidden>Menú</button>
             </div>
             <div class="workspace-menu" id="workspace-menu">

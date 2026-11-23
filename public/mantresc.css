@@ -95,7 +95,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .navigation a, .button { text-decoration: none; }
 .navigation nav > a:not(.button):hover { text-decoration: underline; }
 .brand { display: inline-flex; align-items: center; gap: .65rem; font-weight: 900; letter-spacing: -.04em; font-size: 1.3rem; }
-.brand-mark { display: block; width: 2.5rem; height: 2.5rem; object-fit: contain; }
+.brand-mark {
+    display: block;
+    width: 72px;
+    height: 72px;
+    flex: none;
+    object-fit: contain;
+}
+.workspace-sidebar .brand-mark,
+[data-theme="dark"] .brand-mark {
+    filter: drop-shadow(0 0 1px var(--beige)) drop-shadow(0 0 2px var(--ash-grey));
+}
 .button, .theme-button { border: 1px solid var(--line); border-radius: .75rem; padding: .65rem 1rem; font-weight: 700; cursor: pointer; }
 .button:hover, .theme-button:hover { outline: 2px solid var(--accent); outline-offset: 2px; }
 .button-primary { display: inline-flex; gap: .75rem; background: var(--button); color: var(--button-text); border-color: var(--button); }
@@ -109,7 +119,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .site-home .navigation { width: 100%; padding-inline: clamp(1rem, 3vw, 2rem); }
 .site-home .navigation nav > a { border: 1px solid var(--line); }
 .site-home .brand { font-size: clamp(1.25rem, 3vw, 2rem); line-height: 1.1; }
-.site-home .brand-mark { width: clamp(2.5rem, 6vw, 4.5rem); height: auto; }
 .site-home .brand small {
     display: block;
     margin-top: .25rem;
@@ -393,7 +402,6 @@ nav a[aria-current="page"] { background: var(--active); color: var(--active-text
     letter-spacing: .07em;
     font-weight: 750;
 }
-.site-home .brand-mark, .brand-mark { width: 2.25rem; height: 2.25rem; }
 .site-home .navigation nav > a:not(.button) { border: 0; }
 .navigation .theme-button, .workspace-topbar .theme-button {
     display: inline-flex;
