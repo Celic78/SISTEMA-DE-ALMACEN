@@ -7,7 +7,6 @@
     <title>@yield('title', 'Panel') · SIRE-M</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="{{ asset('mantresc.css') }}">
-    <link rel="stylesheet" href="{{ asset('mantresc-mensajes.css') }}">
     <script src="{{ asset('mantresc-theme.js') }}"></script>
     @stack('styles')
 </head>
@@ -48,11 +47,6 @@
                     <a href="{{ route('cuadrillas.index', ['estado' => 'proceso']) }}" @if (request()->routeIs('cuadrillas.index') && request('estado') === 'proceso') aria-current="page" @endif>Proceso de trabajo</a>
                     <a href="{{ route('cuadrillas.index', ['estado' => 'terminadas']) }}" @if (request()->routeIs('cuadrillas.index') && request('estado') === 'terminadas') aria-current="page" @endif>Trabajos terminados</a>
                 @endif
-                @isset($totalMensajesSinLeer)
-                    <a href="{{ route('mensajes.index') }}" class="messages-nav" @if (request()->routeIs('mensajes.index')) aria-current="page" @endif>
-                        Mensajes <span class="messages-count" data-messages-count data-count-url="{{ route('mensajes.pendientes') }}" aria-live="polite" @if (! $totalMensajesSinLeer) hidden @endif>{{ $totalMensajesSinLeer }}</span>
-                    </a>
-                @endisset
             </nav>
             <div class="workspace-controls">
                 <form method="POST" action="{{ route('logout') }}">
@@ -64,12 +58,7 @@
         <main class="workspace-content">
             <header class="workspace-topbar">
                 <span class="workspace-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($persona->name, 0, 1)) }}</span>
-                <div class="workspace-account">
-                    <strong>{{ $persona->name }}</strong>
-                    @if (request()->routeIs('mensajes.index'))
-                        <small>{{ ['coordinador' => 'Coordinación', 'tecnico' => 'Técnico', 'almacen' => 'Almacén'][$persona->email_tipo] ?? '' }}</small>
-                    @endif
-                </div>
+                <strong>{{ $persona->name }}</strong>
                 <button type="button" class="theme-button" data-theme-toggle aria-label="Tema oscuro" aria-pressed="false">
                     <span>Claro</span>
                     <span class="theme-track" aria-hidden="true"></span>
@@ -95,9 +84,6 @@
             @yield('content')
         </main>
     </div>
-    @isset($totalMensajesSinLeer)
-        <script src="{{ asset('mantresc-mensajes.js') }}" defer></script>
-    @endisset
     @stack('scripts')
 </body>
 </html>

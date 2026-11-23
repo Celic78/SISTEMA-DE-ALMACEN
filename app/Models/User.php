@@ -4,14 +4,12 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
@@ -128,23 +126,6 @@ class User extends Authenticatable
     public function isAlmacen(): bool
     {
         return $this->hasAnyRol(['Almacen', 'Almacén', 'Almacenista']) || $this->email_tipo === 'almacen';
-    }
-
-    /** @return Builder<User> */
-    public function contactosOperativos(): Builder
-    {
-        return self::query()
-            ->whereIn('email_tipo', array_diff(['coordinador', 'tecnico', 'almacen'], [$this->email_tipo]))
-            ->where('estado_registro', 'aprobado')
-            ->whereKeyNot($this->getKey());
-    }
-
-    public function mensajesOperativosSinLeer(): \Illuminate\Database\Query\Builder
-    {
-        return DB::table('mensajes_operativos')
-            ->where('destinatario', $this->getKey())
-            ->whereNull('leido')
-            ->whereIn('remitente', $this->contactosOperativos()->select('id'));
     }
 
     /**

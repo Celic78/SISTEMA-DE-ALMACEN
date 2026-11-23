@@ -33,10 +33,6 @@ class AppServiceProvider extends ServiceProvider
                         ->whereHas('solicitud')->count(),
                 ]);
             }
-
-            if ($usuario && in_array($usuario->email_tipo, ['coordinador', 'tecnico', 'almacen'], true)) {
-                $view->with('totalMensajesSinLeer', $usuario->mensajesOperativosSinLeer()->count());
-            }
         });
     }
 }
