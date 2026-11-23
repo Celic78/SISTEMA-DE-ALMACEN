@@ -15,7 +15,7 @@
     @php
         $persona = auth()->user();
         $enlaces = match ($persona->email_tipo) {
-            'coordinador' => ['coordinacion.index' => 'Incidencias', 'coordinacion.cuadrillas' => 'Cuadrillas', 'coordinacion.registros' => 'Acceso y programación', 'reportes.create' => 'Nuevo reporte', 'reportes.index' => 'Mis reportes'],
+            'coordinador' => ['coordinacion.index' => 'Incidencias', 'coordinacion.cuadrillas' => 'Cuadrillas', 'coordinacion.registros' => 'Perfiles', 'coordinacion.avisos.index' => 'Avisos de mantenimiento', 'reportes.create' => 'Nuevo reporte', 'reportes.index' => 'Mis reportes'],
             'tecnico' => ['cuadrillas.index' => 'Órdenes asignadas'],
             'almacen' => ['almacen.index' => 'Inventario', 'almacen.requisiciones' => 'Requisiciones'],
             default => ['reportes.create' => 'Nuevo reporte', 'reportes.index' => 'Mis reportes', 'reportes.estado' => 'Estado de reporte'],
@@ -76,6 +76,22 @@
                     <span>Oscuro</span>
                 </button>
             </header>
+            @if (($solicitudesDeAccesoPendientes ?? 0) || ($reportesPendientesDeRevision ?? 0))
+                <nav class="pending-notifications" aria-label="Notificaciones pendientes">
+                    @if ($solicitudesDeAccesoPendientes)
+                        <a class="pending-notification pending-notification-access" href="{{ route('coordinacion.registros') }}">
+                            <strong>{{ $solicitudesDeAccesoPendientes }}</strong>
+                            {{ $solicitudesDeAccesoPendientes === 1 ? 'Solicitud de acceso pendiente' : 'Solicitudes de acceso pendientes' }}
+                        </a>
+                    @endif
+                    @if ($reportesPendientesDeRevision)
+                        <a class="pending-notification pending-notification-reports" href="{{ route('coordinacion.index', ['estado' => 'nuevas']) }}">
+                            <strong>{{ $reportesPendientesDeRevision }}</strong>
+                            {{ $reportesPendientesDeRevision === 1 ? 'Reporte por revisar' : 'Reportes por revisar' }}
+                        </a>
+                    @endif
+                </nav>
+            @endif
             @yield('content')
         </main>
     </div>

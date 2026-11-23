@@ -24,6 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 Route::get('/', function (): View {
@@ -264,11 +265,16 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
 
             return back()->with('status', 'Reporte vinculado.');
         })->name('coordinacion.ordenes.vincular');
+        Route::get('/coordinacion/avisos', function (): View {
+            return view('coordinacion.avisos', [
+                'categorias' => CategoriaSolicitud::where('nombre_categoria', CategoriaSolicitud::INMUEBLE)->orderBy('nombre_categoria')->get(),
+            ]);
+        })->name('coordinacion.avisos.index');
         Route::post('/coordinacion/avisos', function (Request $request): RedirectResponse {
             $datos = $request->validate([
                 'titulo' => ['required', 'string', 'max:160'],
                 'ubicacion' => ['required_with:id_categoria,intervalo_dias', 'nullable', 'string', 'max:255'],
-                'id_categoria' => ['required_with:ubicacion,intervalo_dias', 'nullable', 'integer', 'exists:categorias_solicitud,id_categoria'],
+                'id_categoria' => ['required_with:ubicacion,intervalo_dias', 'nullable', 'integer', Rule::exists('categorias_solicitud', 'id_categoria')->where('nombre_categoria', CategoriaSolicitud::INMUEBLE)],
                 'intervalo_dias' => ['nullable', 'integer', 'min:1', 'max:365'],
                 'fecha' => ['required', 'date_format:Y-m-d\TH:i', 'after:now'],
             ]);
@@ -276,12 +282,11 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
             $datos['id_coordinador'] = $request->user()->getKey();
             DB::table('avisos_mantenimiento')->insertOrIgnore($datos);
 
-            return back()->with('status', 'Aviso publicado.');
+            return redirect()->route('coordinacion.avisos.index')->with('status', 'Aviso publicado.');
         })->name('coordinacion.avisos');
         Route::get('/coordinacion/registro', function (): View {
             return view('coordinacion.registros', [
                 'usuarios' => User::where('estado_registro', 'pendiente')->orderBy('id')->paginate(25),
-                'categorias' => CategoriaSolicitud::orderBy('nombre_categoria')->get(),
             ]);
         })->name('coordinacion.registros');
         Route::get('/coordinacion/cuadrillas', function (): View {

@@ -510,3 +510,48 @@ nav a[aria-current="page"] { background: var(--active); color: var(--active-text
     inset-inline-end: .3rem;
     inset-block-end: .28rem;
 }
+
+.pending-notifications {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+.pending-notification {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .55rem .85rem;
+    border: 1px solid currentColor;
+    border-radius: .45rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+.pending-notification-access {
+    background: #fce7f3;
+    color: #831843;
+}
+.pending-notification-reports {
+    background: #fef3c7;
+    color: #78350f;
+}
+[data-theme="dark"] .pending-notification-access {
+    background: #701a42;
+    color: #fce7f3;
+}
+[data-theme="dark"] .pending-notification-reports {
+    background: #78350f;
+    color: #fef3c7;
+}
+.pending-notification strong {
+    display: grid;
+    place-items: center;
+    min-width: 1.65rem;
+    min-height: 1.65rem;
+    padding-inline: .25rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: .85rem;
+}
+.pending-notification:hover { text-decoration: underline; }
+.pending-notification:focus-visible { outline-color: currentColor; }

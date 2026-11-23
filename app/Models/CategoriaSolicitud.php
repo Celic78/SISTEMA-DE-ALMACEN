@@ -10,6 +10,8 @@ class CategoriaSolicitud extends Model
 {
     use HasFactory;
 
+    public const INMUEBLE = 'Inmueble';
+
     protected $table = 'categorias_solicitud';
 
     protected $primaryKey = 'id_categoria';

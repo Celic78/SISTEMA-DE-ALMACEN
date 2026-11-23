@@ -26,7 +26,7 @@ class ExampleTest extends TestCase
         $this->get(route('home'))->assertOk()->assertSee('SIRE-M')->assertSee('Sistema de Reportes Escolares y Mantenimiento')->assertSee('Avisos de mantenimiento')
             ->assertSee(route('servicios'))
             ->assertDontSee('Reporte de fallas');
-        $this->get(route('servicios'))->assertOk()->assertSee('Mantenimiento Eléctrico y Electrónico')->assertSee('Gestión de Almacén');
+        $this->get(route('servicios'))->assertOk()->assertSee('Mantenimiento de inmuebles')->assertSee('Pasillos, accesos y áreas comunes')->assertDontSee('Mantenimiento Eléctrico y Electrónico');
         $this->get(route('reportes.create'))->assertRedirect(route('login'));
         $this->get(route('reportes.estado'))->assertRedirect(route('login'));
     }
@@ -64,7 +64,12 @@ class ExampleTest extends TestCase
         $coordinadora = User::where('email', 'clara.ruiz@coordinador.mx')->firstOrFail();
         $alumna = User::where('email', $email)->firstOrFail();
         $this->assertSame('Ana María Torres Reyes', $alumna->name);
-        $this->actingAs($coordinadora)->post(route('coordinacion.registros.decidir', $alumna), ['decision' => 'aprobado']);
+        $this->actingAs($coordinadora)->get(route('coordinacion.registros'))->assertOk()
+            ->assertSee('pending-notification-access', false)
+            ->assertSee('Solicitud de acceso pendiente')
+            ->assertDontSee('pending-notification-reports', false);
+        $this->post(route('coordinacion.registros.decidir', $alumna), ['decision' => 'aprobado']);
+        $this->get(route('coordinacion.registros'))->assertDontSee('pending-notification-access', false);
         $this->post(route('logout'))->assertRedirect(route('home'));
 
         $this->post(route('login.store'), ['email' => $email, 'password' => $password])
@@ -128,11 +133,14 @@ class ExampleTest extends TestCase
         $datos = [
             'ubicacion_libre' => 'Edificio A, salón 204',
             'id_categoria' => CategoriaSolicitud::firstOrFail()->getKey(),
-            'descripcion_falla' => 'El proyector se apaga al encenderlo.',
+            'descripcion_falla' => 'La puerta del aula no cierra correctamente.',
             'fecha_hallazgo' => '2026-11-17T09:00',
         ];
 
-        $this->actingAs($alumna)->post(route('reportes.store'), $datos + [
+        $this->actingAs($alumna)->get(route('reportes.create'))->assertOk()
+            ->assertSee('Describe la falla del inmueble')
+            ->assertDontSee('name="id_categoria"', false);
+        $this->post(route('reportes.store'), $datos + [
             'evidencia' => UploadedFile::fake()->createWithContent('falla.png', $imagen),
         ])->assertSessionHasNoErrors()->assertRedirect(route('reportes.index'));
         $this->post(route('reportes.store'), $datos + [
@@ -140,6 +148,11 @@ class ExampleTest extends TestCase
         ])->assertSessionHasErrors('reporte');
 
         $orden = OrdenTrabajo::firstOrFail();
+        $this->assertSame(CategoriaSolicitud::INMUEBLE, $orden->solicitud->categoria->nombre_categoria);
+        $this->actingAs($coordinadora)->get(route('coordinacion.registros'))->assertOk()
+            ->assertSee('pending-notification-reports', false)
+            ->assertSee('Reporte por revisar')
+            ->assertSee(route('coordinacion.index', ['estado' => 'nuevas']));
         $this->actingAs($coordinadora)->post(route('coordinacion.ordenes.asignar', $orden), [
             'id_tecnico' => $tecnico->getKey(),
             'id_prioridad' => $orden->solicitud->id_prioridad,
@@ -160,7 +173,7 @@ class ExampleTest extends TestCase
             ->assertSeeInOrder(['Reporte enviado', 'Técnico asignado', 'En mantenimiento', 'Solucionado y terminado'])
             ->assertSee('Tiempo estimado: 6 h');
         $this->actingAs($tecnico)->get(route('cuadrillas.index', ['estado' => 'proceso']))->assertOk()
-            ->assertSee('El proyector se apaga al encenderlo.');
+            ->assertSee('La puerta del aula no cierra correctamente.');
         $this->post(route('cuadrillas.actualizar'), [
             'id_orden' => $orden->getKey(),
             'estado' => 'resuelta',
@@ -271,14 +284,21 @@ class ExampleTest extends TestCase
             ->assertDontSee('Publicar aviso de mantenimiento');
         $this->get(route('coordinacion.avisos.index'))->assertOk()
             ->assertSee('Publicar aviso de mantenimiento')
-            ->assertDontSee('Crear cuenta de personal');
-        $this->from(route('coordinacion.avisos.index'))->post(route('coordinacion.avisos'), [
+            ->assertDontSee('Crear cuenta de personal')->assertDontSee('Electrónico');
+        $aviso = [
             'titulo' => 'Revisión mensual de instalaciones',
             'fecha' => $fecha->format('Y-m-d\TH:i'),
             'ubicacion' => 'Aulas del edificio A',
-            'id_categoria' => CategoriaSolicitud::firstOrFail()->getKey(),
             'intervalo_dias' => 30,
-        ])->assertSessionHasNoErrors();
+        ];
+        $this->from(route('coordinacion.avisos.index'))->post(route('coordinacion.avisos'), $aviso + [
+            'id_categoria' => CategoriaSolicitud::where('nombre_categoria', 'Electrónico')->firstOrFail()->getKey(),
+        ])->assertSessionHasErrors('id_categoria');
+        $this->assertDatabaseCount('avisos_mantenimiento', 0);
+
+        $this->post(route('coordinacion.avisos'), $aviso + [
+            'id_categoria' => CategoriaSolicitud::where('nombre_categoria', CategoriaSolicitud::INMUEBLE)->firstOrFail()->getKey(),
+        ])->assertSessionHasNoErrors()->assertRedirectToRoute('coordinacion.avisos.index');
         $this->get(route('home'))->assertSee('Revisión mensual de instalaciones');
 
         $this->travelTo($fecha->copy()->addMinute(), function (): void {

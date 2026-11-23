@@ -28,19 +28,19 @@ class ReporteController extends Controller
 
     public function crear(): View
     {
-        return view('reportes.crear', ['categorias' => CategoriaSolicitud::orderBy('nombre_categoria')->get()]);
+        return view('reportes.crear');
     }
 
     public function guardar(Request $request): RedirectResponse
     {
         $datos = $request->validate([
             'ubicacion_libre' => ['required', 'string', 'max:255'],
-            'id_categoria' => ['required', 'integer', 'exists:categorias_solicitud,id_categoria'],
             'descripcion_falla' => ['required', 'string', 'min:10', 'max:2000'],
             'fecha_hallazgo' => ['required', 'date_format:Y-m-d\TH:i'],
             'evidencia' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
         ]);
 
+        $datos['id_categoria'] = CategoriaSolicitud::firstOrCreate(['nombre_categoria' => CategoriaSolicitud::INMUEBLE])->getKey();
         $archivo = $request->file('evidencia');
         $datos['fecha_hallazgo'] = Carbon::parse($datos['fecha_hallazgo'])->format('Y-m-d H:i:s');
         $datos['huella_reporte'] = hash('sha256', json_encode([
