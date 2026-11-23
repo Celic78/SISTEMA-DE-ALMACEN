@@ -31,15 +31,15 @@ class ExampleTest extends TestCase
         $this->get(route('reportes.estado'))->assertRedirect(route('login'));
     }
 
-    public function test_registration_requires_matching_institutional_email_and_role(): void
+    public function test_registration_rejects_a_role_submitted_by_the_client(): void
     {
         $this->from(route('register'))->post(route('register.store'), [
-            'name' => 'Ana Torres',
+            'nombres' => 'Ana', 'apellido_paterno' => 'Torres', 'apellido_materno' => 'Reyes',
             'email' => 'ana.torres@alumno.mx',
             'rol' => 'profesor',
             'password' => 'MantrescPrueba123!',
             'password_confirmation' => 'MantrescPrueba123!',
-        ])->assertSessionHasErrors(['email' => 'Error, los datos ingresados no coinciden']);
+        ])->assertSessionHasErrors('rol');
 
         $this->assertDatabaseMissing('users', ['email' => 'ana.torres@alumno.mx']);
     }
@@ -51,9 +51,8 @@ class ExampleTest extends TestCase
         $password = 'MantrescPrueba123!';
 
         $this->post(route('register.store'), [
-            'name' => 'Nueva Alumna',
+            'nombres' => 'Ana María', 'apellido_paterno' => 'Torres', 'apellido_materno' => 'Reyes',
             'email' => $email,
-            'rol' => 'alumno',
             'password' => $password,
             'password_confirmation' => $password,
         ])->assertRedirect(route('login'));
@@ -64,6 +63,7 @@ class ExampleTest extends TestCase
 
         $coordinadora = User::where('email', 'clara.ruiz@coordinador.mx')->firstOrFail();
         $alumna = User::where('email', $email)->firstOrFail();
+        $this->assertSame('Ana María Torres Reyes', $alumna->name);
         $this->actingAs($coordinadora)->post(route('coordinacion.registros.decidir', $alumna), ['decision' => 'aprobado']);
         $this->post(route('logout'))->assertRedirect(route('home'));
 
@@ -85,22 +85,36 @@ class ExampleTest extends TestCase
         $this->assertAuthenticated();
     }
 
-    public function test_technical_registration_keeps_role_without_staff_details(): void
+    public function test_registration_shows_required_name_fields_and_password_controls(): void
     {
-        $this->get(route('register'))->assertOk()->assertSee('Rol institucional')
-            ->assertDontSee('Especialidad')->assertDontSee('Turno');
+        $this->get(route('register'))->assertOk()
+            ->assertSee('Solo los alumnos pueden registrarse.')
+            ->assertSee('name="nombres"', false)
+            ->assertSee('name="apellido_paterno"', false)
+            ->assertSee('name="apellido_materno"', false)
+            ->assertSee('aria-controls="access-password"', false)
+            ->assertSee('aria-controls="access-password-confirmation"', false)
+            ->assertDontSee('name="rol"', false);
 
         $this->post(route('register.store'), [
-            'name' => 'Nueva Técnica',
-            'email' => 'nueva.tecnica@tecnico.mx',
-            'rol' => 'tecnico',
+            'email' => 'nueva.alumna@alumno.mx',
             'password' => 'MantrescPrueba123!',
             'password_confirmation' => 'MantrescPrueba123!',
-        ])->assertSessionHasNoErrors()->assertRedirect(route('login'));
-        $this->assertDatabaseHas('users', [
-            'email' => 'nueva.tecnica@tecnico.mx',
-            'estado_registro' => 'pendiente',
-        ]);
+        ])->assertSessionHasErrors(['nombres', 'apellido_paterno', 'apellido_materno']);
+    }
+
+    public function test_registration_rejects_a_staff_email(): void
+    {
+        $this->post(route('register.store'), [
+            'nombres' => 'Ana',
+            'apellido_paterno' => 'Torres',
+            'apellido_materno' => 'Reyes',
+            'email' => 'ana.torres@tecnico.mx',
+            'password' => 'MantrescPrueba123!',
+            'password_confirmation' => 'MantrescPrueba123!',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertDatabaseMissing('users', ['email' => 'ana.torres@tecnico.mx']);
     }
 
     public function test_a_report_can_be_assigned_and_started_only_after_required_approval(): void

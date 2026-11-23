@@ -130,12 +130,12 @@ class AuthController extends Controller
         $datos = $this->credenciales($request, true);
 
         DB::transaction(function () use ($datos): void {
-            $rol = Rol::firstOrCreate(['nombre_rol' => ucfirst($datos['rol'])]);
+            $rol = Rol::firstOrCreate(['nombre_rol' => 'Alumno']);
             $usuario = new User([
-                'name' => $datos['name'],
+                'name' => implode(' ', [$datos['nombres'], $datos['apellido_paterno'], $datos['apellido_materno']]),
                 'email' => mb_strtolower($datos['email']),
                 'password' => $datos['password'],
-                'email_tipo' => $datos['rol'],
+                'email_tipo' => 'alumno',
             ]);
             $usuario->estado_registro = 'pendiente';
             $usuario->save();
@@ -197,19 +197,25 @@ class AuthController extends Controller
         ];
 
         if ($registro) {
-            $reglas['rol'] = ['required', 'string', 'in:alumno'];
-            $reglas['name'] = ['required', 'string', 'max:255'];
+            $reglas['rol'] = ['prohibited'];
+            $reglas['nombres'] = ['required', 'string', 'max:100'];
+            $reglas['apellido_paterno'] = ['required', 'string', 'max:76'];
+            $reglas['apellido_materno'] = ['required', 'string', 'max:76'];
             $reglas['password'] = ['required', 'string', 'min:8', 'max:72', 'confirmed'];
         }
 
-        $datos = $request->validate($reglas, ['email.*' => $mensaje, 'rol.*' => $mensaje]);
+        $datos = $request->validate($reglas, ['email.*' => $mensaje, 'rol.*' => $mensaje], [
+            'nombres' => 'nombres',
+            'apellido_paterno' => 'apellido paterno',
+            'apellido_materno' => 'apellido materno',
+        ]);
 
         if (! $registro) {
             return $datos;
         }
 
         try {
-            $this->authService->validarCoincidenciaCorreoRol($datos['email'], $datos['rol']);
+            $this->authService->validarCoincidenciaCorreoRol($datos['email'], 'alumno');
         } catch (BusinessRuleException $exception) {
             throw ValidationException::withMessages(['email' => $exception->getMessage()]);
         }

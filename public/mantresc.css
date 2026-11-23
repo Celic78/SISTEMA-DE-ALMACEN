@@ -474,7 +474,15 @@ nav a[aria-current="page"] { background: var(--active); color: var(--active-text
     .workspace-sidebar { gap: .9rem; }
 }
 
-.login-form #access-password {
+.registration-notice {
+    margin: 0 0 1rem;
+    padding: .7rem .85rem;
+    border-inline-start: 3px solid var(--accent);
+    background: var(--input-fill);
+    color: var(--ink);
+    font-size: .875rem;
+}
+.site-access .password-field input {
     padding-inline-end: 3rem;
 }
 .password-toggle {

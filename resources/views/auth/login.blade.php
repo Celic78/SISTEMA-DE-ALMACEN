@@ -47,21 +47,21 @@
             </nav>
         @endif
         <h1 id="access-title">{{ $titulo }}</h1>
+        @if ($registro)
+            <p class="registration-notice">Solo los alumnos pueden registrarse. Los profesores, técnicos y el personal de almacén deben acudir con el coordinador para solicitar su cuenta.</p>
+        @endif
         @if (session('status'))
             <p class="form-message" role="status">{{ session('status') }}</p>
         @endif
-        <form method="POST" action="{{ route($destino) }}" @if (request()->routeIs('login')) class="login-form" @endif>
+        <form method="POST" action="{{ route($destino) }}">
             @csrf
             @if ($restablecer)
                 <input type="hidden" name="token" value="{{ request()->route('token') }}">
             @endif
             @if ($registro)
-                <label>Rol institucional
-                    <select name="rol" required>
-                        <option value="alumno">Alumno</option>
-                    </select>
-                </label>
-                <label>Nombre completo <input name="name" value="{{ old('name') }}" autocomplete="name" required></label>
+                <label>Nombre's <input name="nombres" value="{{ old('nombres') }}" autocomplete="given-name" maxlength="100" required></label>
+                <label>Apellido paterno <input name="apellido_paterno" value="{{ old('apellido_paterno') }}" autocomplete="section-paterno family-name" maxlength="76" required></label>
+                <label>Apellido materno <input name="apellido_materno" value="{{ old('apellido_materno') }}" autocomplete="section-materno family-name" maxlength="76" required></label>
             @endif
             <label>Correo institucional <input type="text" inputmode="email" name="email" value="{{ old('email', $restablecer ? request()->query('email') : '') }}" autocomplete="email" required></label>
             @unless ($recuperacion)
@@ -69,19 +69,16 @@
                     <label for="access-password">Contraseña
                         <input id="access-password" type="password" name="password" autocomplete="{{ $registro || $restablecer ? 'new-password' : 'current-password' }}" required>
                     </label>
-                    @if (request()->routeIs('login'))
-                        <button type="button" class="password-toggle" data-password-toggle aria-controls="access-password" aria-label="Mostrar contraseña" aria-pressed="false" hidden>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/>
-                                <circle cx="12" cy="12" r="2.5"/>
-                                <path class="password-toggle-slash" d="m3 3 18 18"/>
-                            </svg>
-                        </button>
-                    @endif
+                    @include('partials.password-toggle', ['campo' => 'access-password', 'etiqueta' => 'Mostrar contraseña'])
                 </div>
             @endunless
             @if ($registro || $restablecer)
-                <label>Confirma tu contraseña <input type="password" name="password_confirmation" autocomplete="new-password" required></label>
+                <div class="password-field">
+                    <label for="access-password-confirmation">Confirma tu contraseña
+                        <input id="access-password-confirmation" type="password" name="password_confirmation" autocomplete="new-password" required>
+                    </label>
+                    @include('partials.password-toggle', ['campo' => 'access-password-confirmation', 'etiqueta' => 'Mostrar confirmación de contraseña'])
+                </div>
             @endif
             @if (request()->routeIs('login'))
                 <p class="mb-4"><a href="{{ route('password.request') }}">¿Olvidaste tu contraseña?</a></p>
