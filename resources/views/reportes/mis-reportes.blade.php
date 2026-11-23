@@ -25,8 +25,13 @@
                 <p>{{ $solicitud->ubicacion_libre ?? $solicitud->espacio?->nombre_espacio }}</p>
                 <p>{{ $solicitud->descripcion_falla }}</p>
                 @if ($solicitud->evidencia_url)
-                    <a class="underline" href="{{ $solicitud->evidencia_url }}">Ver fotografía del reporte</a>
+                    @include('partials.fotografia-evidencia', ['url' => $solicitud->evidencia_url, 'etiqueta' => 'Ver fotografía del reporte'])
                 @endif
+                @foreach ($ordenSeguimiento?->evidenciasCierre ?? [] as $evidencia)
+                    @if ($evidencia->tipo === 'fotografia')
+                        @include('partials.fotografia-evidencia', ['url' => $evidencia->url_archivo, 'etiqueta' => 'Fotografía de cierre '.$loop->iteration])
+                    @endif
+                @endforeach
                 <p>Estado: {{ match ($estadoSeguimiento) {
                     'pendiente', 'abierta' => 'Reporte recibido',
                     'asignada' => 'Técnico asignado',

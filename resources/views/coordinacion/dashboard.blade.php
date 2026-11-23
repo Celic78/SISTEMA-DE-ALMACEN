@@ -47,7 +47,7 @@
                 <p>Folio del reporte: #{{ $solicitud->getKey() }}</p>
                 <p>{{ $solicitud->descripcion_falla }}</p>
                 @if ($solicitud->evidencia_url)
-                    <a class="underline" href="{{ $solicitud->evidencia_url }}">Ver fotografía del reporte</a>
+                    @include('partials.fotografia-evidencia', ['url' => $solicitud->evidencia_url, 'etiqueta' => 'Ver fotografía del reporte'])
                 @endif
                 <p>Estado: {{ str_replace('_', ' ', $orden->estado) }} · Prioridad: {{ $solicitud->prioridad?->nivel ?? 'Por evaluar' }}</p>
                 <p>Reportes vinculados: {{ $solicitud->solicitudes_hijas_count ?? 0 }} · Técnico: {{ $orden->tecnico?->name ?? 'Sin asignar' }}</p>
@@ -66,7 +66,11 @@
                     <p>Resumen de cierre: {{ $orden->reporteFinal->resumen_ejecutivo }}</p>
                 @endif
                 @foreach ($orden->evidenciasCierre as $evidencia)
-                    <a class="underline" href="{{ $evidencia->url_archivo }}">Evidencia de cierre {{ $loop->iteration }}</a>
+                    @if ($evidencia->tipo === 'fotografia')
+                        @include('partials.fotografia-evidencia', ['url' => $evidencia->url_archivo, 'etiqueta' => 'Evidencia de cierre '.$loop->iteration])
+                    @else
+                        <a class="underline" href="{{ $evidencia->url_archivo }}">Evidencia de cierre {{ $loop->iteration }}</a>
+                    @endif
                 @endforeach
                 @if ($orden->movimientosMaterial->isNotEmpty())
                     <h3 class="mt-2 font-semibold">Consumo por material</h3>

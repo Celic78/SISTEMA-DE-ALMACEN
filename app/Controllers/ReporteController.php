@@ -19,7 +19,7 @@ class ReporteController extends Controller
     public function index(Request $request): View
     {
         $solicitudes = $request->user()->solicitudes()
-            ->with(['espacio.edificio', 'categoria', 'ordenTrabajo', 'solicitudPadre.ordenTrabajo'])
+            ->with(['espacio.edificio', 'categoria', 'ordenTrabajo.evidenciasCierre', 'solicitudPadre.ordenTrabajo.evidenciasCierre'])
             ->latest('id_solicitud')
             ->paginate(15);
 

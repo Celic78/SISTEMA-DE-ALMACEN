@@ -15,14 +15,18 @@
                 <h2 class="font-bold">Orden #{{ $orden->getKey() }} · {{ $orden->solicitud?->ubicacion_libre ?? $orden->solicitud?->espacio?->nombre_espacio }}</h2>
                 <p>{{ $orden->solicitud?->descripcion_falla }}</p>
                 @if ($orden->solicitud?->evidencia_url)
-                    <a class="underline" href="{{ $orden->solicitud->evidencia_url }}">Ver fotografía del reporte</a>
+                    @include('partials.fotografia-evidencia', ['url' => $orden->solicitud->evidencia_url, 'etiqueta' => 'Ver fotografía del reporte'])
                 @endif
                 <p>Estado: {{ str_replace('_', ' ', $orden->estado) }}</p>
                 @if ($orden->fecha_asignacion)<p>Asignación: {{ $orden->fecha_asignacion->format('d/m/Y H:i') }}</p>@endif
                 @if ($orden->fecha_inicio)<p>Inicio: {{ $orden->fecha_inicio->format('d/m/Y H:i') }}</p>@endif
                 @if ($orden->fecha_fin)<p>Terminado el <time datetime="{{ $orden->fecha_fin->toIso8601String() }}">{{ $orden->fecha_fin->format('d/m/Y H:i') }}</time></p>@endif
                 @foreach ($orden->evidenciasCierre as $evidencia)
-                    <a class="underline" href="{{ $evidencia->url_archivo }}">Evidencia de cierre {{ $loop->iteration }}</a>
+                    @if ($evidencia->tipo === 'fotografia')
+                        @include('partials.fotografia-evidencia', ['url' => $evidencia->url_archivo, 'etiqueta' => 'Evidencia de cierre '.$loop->iteration])
+                    @else
+                        <a class="underline" href="{{ $evidencia->url_archivo }}">Evidencia de cierre {{ $loop->iteration }}</a>
+                    @endif
                 @endforeach
                 @if (in_array($orden->estado, ['asignada', 'aprobada'], true))
                     <form method="POST" action="{{ route('cuadrillas.estimar') }}" class="mt-3 flex flex-wrap items-end gap-2">
@@ -44,7 +48,12 @@
                             </select>
                         </label>
                         <label>Comentarios <input class="block w-full rounded border p-2" name="comentarios" maxlength="1000"></label>
-                        <label>Archivos de cierre <input class="block" type="file" name="evidencias[]" accept="image/*,video/mp4,video/webm" multiple></label>
+                        @include('partials.adjuntar-evidencia', [
+                            'etiqueta' => 'Archivos de cierre',
+                            'campo' => 'evidencias[]',
+                            'formatos' => 'image/jpeg,image/png,image/webp,video/mp4,video/webm',
+                            'multiple' => true,
+                        ])
                         <button class="button button-primary justify-self-start">Guardar avance</button>
                     </form>
                 @endif

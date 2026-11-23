@@ -222,6 +222,9 @@ class ExampleTest extends TestCase
         ];
 
         $this->actingAs($alumna)->get(route('reportes.create'))->assertOk()
+            ->assertHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()')
+            ->assertSee('data-open-camera', false)
+            ->assertSee('data-evidence-previews', false)
             ->assertSee('Describe la falla del inmueble')
             ->assertSee('min="'.now()->toDateString().'T00:00"', false)
             ->assertSee('max="'.now()->toDateString().'T23:59"', false)
@@ -242,6 +245,10 @@ class ExampleTest extends TestCase
         ])->assertSessionHasErrors('reporte');
 
         $orden = OrdenTrabajo::firstOrFail();
+        $rutaFoto = parse_url($orden->solicitud->evidencia_url, PHP_URL_PATH);
+        $this->get(route('reportes.index'))->assertOk()
+            ->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+            ->assertSee('src="'.$rutaFoto.'"', false);
         $this->assertSame(CategoriaSolicitud::INMUEBLE, $orden->solicitud->categoria->nombre_categoria);
         $this->actingAs($coordinadora)->get(route('coordinacion.registros'))->assertOk()
             ->assertSee('pending-notification-reports', false)
@@ -268,6 +275,9 @@ class ExampleTest extends TestCase
             ->assertSeeInOrder(['Reporte enviado', 'Técnico asignado', 'En mantenimiento', 'Solucionado y terminado'])
             ->assertSee('Tiempo estimado: 6 h');
         $this->actingAs($tecnico)->get(route('cuadrillas.index', ['estado' => 'proceso']))->assertOk()
+            ->assertHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()')
+            ->assertSee('data-open-camera', false)
+            ->assertSee('src="'.$rutaFoto.'"', false)
             ->assertSee('La puerta del aula no cierra correctamente.');
         $this->post(route('cuadrillas.actualizar'), [
             'id_orden' => $orden->getKey(),
@@ -275,8 +285,10 @@ class ExampleTest extends TestCase
             'evidencias' => [UploadedFile::fake()->createWithContent('solucion.png', $imagen)],
         ])->assertSessionHasNoErrors()->assertRedirect(route('cuadrillas.index', ['estado' => 'terminadas']));
         $this->assertDatabaseHas('ordenes_trabajo', ['id_orden' => $orden->getKey(), 'fecha_fin' => now()->toDateTimeString()]);
+        $rutaCierre = parse_url($orden->evidenciasCierre()->sole()->url_archivo, PHP_URL_PATH);
         $this->get(route('cuadrillas.index', ['estado' => 'terminadas']))->assertOk()
-            ->assertSee('Evidencia de cierre')->assertSee(now()->format('d/m/Y H:i'));
+            ->assertSee('Evidencia de cierre')->assertSee('src="'.$rutaCierre.'"', false)->assertSee(now()->format('d/m/Y H:i'));
+        $this->actingAs($alumna)->get(route('reportes.estado'))->assertOk()->assertSee('src="'.$rutaCierre.'"', false);
         $this->actingAs($coordinadora)->patch(route('coordinacion.ordenes.costo', $orden), [
             'costo_real' => 125.50,
             'justificacion_costo_real' => 'Se reemplazó el cable de alimentación.',

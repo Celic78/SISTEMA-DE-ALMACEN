@@ -29,9 +29,11 @@
             </div>
             <div data-step>
                 <h2>3. Evidencia</h2>
-                <label>Fotografía del fallo
-                    <input type="file" name="evidencia" accept="image/jpeg,image/png,image/webp" required>
-                </label>
+                @include('partials.adjuntar-evidencia', [
+                    'etiqueta' => 'Fotografía del fallo',
+                    'campo' => 'evidencia',
+                    'formatos' => 'image/jpeg,image/png,image/webp',
+                ])
             </div>
             <div class="actions">
                 <button type="button" class="button button-secondary" data-previous hidden>Atrás</button>

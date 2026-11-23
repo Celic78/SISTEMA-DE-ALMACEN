@@ -25,7 +25,8 @@ class SecurityHeaders
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-XSS-Protection', '1; mode=block');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        $camara = $request->routeIs('reportes.create', 'cuadrillas.index') ? '(self)' : '()';
+        $response->headers->set('Permissions-Policy', "camera={$camara}, microphone=(), geolocation=()");
 
         return $response;
     }
