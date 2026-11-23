@@ -81,6 +81,9 @@ class ExampleTest extends TestCase
             $url = route('almacen.index', ['categoria' => $clave]);
             $this->get($url)->assertOk()->assertSee($categoria['etiqueta'])
                 ->assertSee('Agregar material')->assertSee('Eliminar material')
+                ->assertSee('aria-controls="workspace-menu"', false)
+                ->assertDontSee('warehouse-sidebar', false)
+                ->assertDontSee('Papelería')
                 ->assertDontSee($almacenista->email)
                 ->assertViewHas('materiales', fn ($materiales): bool => $materiales->total() === 5
                     && $materiales->every(fn (Material $material): bool => $material->seccion->nombre_seccion === $categoria['nombre']));

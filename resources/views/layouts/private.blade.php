@@ -29,37 +29,42 @@
         };
     @endphp
     <div class="workspace">
-        <aside class="workspace-sidebar {{ $persona->email_tipo === 'almacen' ? 'warehouse-sidebar' : '' }}" aria-label="Panel de usuario">
-            <a class="brand" href="{{ route('home') }}"><img class="brand-mark" src="{{ asset('mantresc-logo.png') }}" alt="" width="40" height="40"> SIRE-M</a>
-            <nav aria-label="Módulos">
-                @if ($persona->email_tipo === 'almacen')
-                    @include('almacen.navegacion')
-                @endif
-                @foreach ($enlaces as $nombreRuta => $etiqueta)
-                    @php
-                        $filtrosPropios = match ($nombreRuta) {
-                            'coordinacion.index' => ['duplicados', 'autorizaciones'],
-                            'cuadrillas.index' => ['proceso', 'terminadas'],
-                            default => [],
-                        };
-                    @endphp
-                    <a href="{{ route($nombreRuta) }}" @if (request()->routeIs($nombreRuta) && ! in_array(request('estado'), $filtrosPropios, true)) aria-current="page" @endif>{{ $etiqueta }}</a>
-                    @if ($nombreRuta === 'coordinacion.index')
-                        @foreach (['duplicados' => 'Posibles duplicados', 'autorizaciones' => 'Autorizaciones'] as $estado => $seccion)
-                            <a href="{{ route($nombreRuta, ['estado' => $estado]) }}" @if (request()->routeIs($nombreRuta) && request('estado') === $estado) aria-current="page" @endif>{{ $seccion }}</a>
-                        @endforeach
+        <aside class="workspace-sidebar" aria-label="Panel de usuario">
+            <div class="workspace-sidebar-header">
+                <a class="brand" href="{{ route('home') }}"><img class="brand-mark" src="{{ asset('mantresc-logo.png') }}" alt="" width="40" height="40"> SIRE-M</a>
+                <button class="button workspace-menu-toggle" type="button" aria-controls="workspace-menu" aria-expanded="true" hidden>Menú</button>
+            </div>
+            <div class="workspace-menu" id="workspace-menu">
+                <nav aria-label="Módulos">
+                    @if ($persona->email_tipo === 'almacen')
+                        @include('almacen.navegacion')
                     @endif
-                @endforeach
-                @if ($persona->email_tipo === 'tecnico')
-                    <a href="{{ route('cuadrillas.index', ['estado' => 'proceso']) }}" @if (request()->routeIs('cuadrillas.index') && request('estado') === 'proceso') aria-current="page" @endif>Proceso de trabajo</a>
-                    <a href="{{ route('cuadrillas.index', ['estado' => 'terminadas']) }}" @if (request()->routeIs('cuadrillas.index') && request('estado') === 'terminadas') aria-current="page" @endif>Trabajos terminados</a>
-                @endif
-            </nav>
-            <div class="workspace-controls">
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="button button-secondary">Cerrar sesión</button>
-                </form>
+                    @foreach ($enlaces as $nombreRuta => $etiqueta)
+                        @php
+                            $filtrosPropios = match ($nombreRuta) {
+                                'coordinacion.index' => ['duplicados', 'autorizaciones'],
+                                'cuadrillas.index' => ['proceso', 'terminadas'],
+                                default => [],
+                            };
+                        @endphp
+                        <a href="{{ route($nombreRuta) }}" @if (request()->routeIs($nombreRuta) && ! in_array(request('estado'), $filtrosPropios, true)) aria-current="page" @endif>{{ $etiqueta }}</a>
+                        @if ($nombreRuta === 'coordinacion.index')
+                            @foreach (['duplicados' => 'Posibles duplicados', 'autorizaciones' => 'Autorizaciones'] as $estado => $seccion)
+                                <a href="{{ route($nombreRuta, ['estado' => $estado]) }}" @if (request()->routeIs($nombreRuta) && request('estado') === $estado) aria-current="page" @endif>{{ $seccion }}</a>
+                            @endforeach
+                        @endif
+                    @endforeach
+                    @if ($persona->email_tipo === 'tecnico')
+                        <a href="{{ route('cuadrillas.index', ['estado' => 'proceso']) }}" @if (request()->routeIs('cuadrillas.index') && request('estado') === 'proceso') aria-current="page" @endif>Proceso de trabajo</a>
+                        <a href="{{ route('cuadrillas.index', ['estado' => 'terminadas']) }}" @if (request()->routeIs('cuadrillas.index') && request('estado') === 'terminadas') aria-current="page" @endif>Trabajos terminados</a>
+                    @endif
+                </nav>
+                <div class="workspace-controls">
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="button button-secondary">Cerrar sesión</button>
+                    </form>
+                </div>
             </div>
         </aside>
         <main class="workspace-content">
@@ -95,6 +100,7 @@
             @yield('content')
         </main>
     </div>
+    <script src="{{ asset('mantresc-menu.js') }}" defer></script>
     @stack('scripts')
 </body>
 </html>

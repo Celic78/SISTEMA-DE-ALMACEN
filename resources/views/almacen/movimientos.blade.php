@@ -24,7 +24,7 @@
         'entrada' => 'Entrada',
         default => 'Todos los movimientos',
     } }}</h2>
-    <div class="warehouse-table-wrap rounded-xl border border-slate-200 bg-white">
+    <div class="warehouse-table-wrap rounded-xl border border-slate-200 bg-white" role="region" aria-label="Historial de movimientos" tabindex="0">
         <table class="warehouse-table">
             <thead><tr><th scope="col">Fecha</th><th scope="col">Material</th><th scope="col">Tipo</th><th scope="col">Cantidad</th><th scope="col">Motivo</th><th scope="col">Prestado a</th><th scope="col">Devolución</th><th scope="col">Registró</th></tr></thead>
             <tbody>
