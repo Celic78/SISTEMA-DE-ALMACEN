@@ -7,7 +7,8 @@
         <div class="hero-copy">
             <h1 id="inicio-titulo">Mantenimiento escolar con seguimiento</h1>
             <p>Plataforma institucional para el reporte de fallas, mantenimiento preventivo y control de materiales en aulas, mobiliario e instalaciones.</p>
-            @auth
+            @php($usuarioAutorizado = auth()->check() && app(\App\Services\AuthService::class)->puedeUsarCuenta(auth()->user()))
+            @if ($usuarioAutorizado)
                 <a class="button button-primary" href="{{ route('dashboard') }}">Ir a mi panel</a>
             @else
                 <a class="button button-primary" href="{{ route('login') }}">Iniciar sesión</a>
