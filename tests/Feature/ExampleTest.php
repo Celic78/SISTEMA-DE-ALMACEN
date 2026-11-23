@@ -266,7 +266,13 @@ class ExampleTest extends TestCase
 
         $coordinadora = User::where('email', 'clara.ruiz@coordinador.mx')->firstOrFail();
         $fecha = now()->addDay()->startOfMinute();
-        $this->actingAs($coordinadora)->post(route('coordinacion.avisos'), [
+        $this->actingAs($coordinadora)->get(route('coordinacion.registros'))->assertOk()
+            ->assertSeeInOrder(['Solicitudes de acceso', 'Crear cuenta de personal'])
+            ->assertDontSee('Publicar aviso de mantenimiento');
+        $this->get(route('coordinacion.avisos.index'))->assertOk()
+            ->assertSee('Publicar aviso de mantenimiento')
+            ->assertDontSee('Crear cuenta de personal');
+        $this->from(route('coordinacion.avisos.index'))->post(route('coordinacion.avisos'), [
             'titulo' => 'Revisión mensual de instalaciones',
             'fecha' => $fecha->format('Y-m-d\TH:i'),
             'ubicacion' => 'Aulas del edificio A',
