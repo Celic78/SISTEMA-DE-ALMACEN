@@ -22,6 +22,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
@@ -53,7 +54,17 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
     Route::post('/primer-acceso', [AuthController::class, 'cambiarPasswordInicial'])->middleware('throttle:10,1')->name('password.initial.update');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/panel', function (Request $request, AuthService $authService): RedirectResponse {
-        return redirect()->to($authService->determinarRutaDestino($request->user(), $request->session()->get('rol_activo')));
+        $usuario = $request->user();
+
+        if (! $authService->puedeUsarCuenta($usuario)) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login');
+        }
+
+        return redirect()->to($authService->determinarRutaDestino($usuario));
     })->name('dashboard');
 
     Route::middleware('role:Alumno,Profesor,Coordinador')->group(function (): void {

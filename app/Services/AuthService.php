@@ -124,22 +124,43 @@ class AuthService
      */
     public function determinarRutaDestino(User $user, ?string $rolActivo = null): string
     {
-        $rolNormalized = $rolActivo ? $this->normalizarRolATipo($rolActivo) : null;
+        // El destino se obtiene del usuario autenticado; nunca de un valor de sesión
+        // que pudiera pertenecer a una cuenta anterior en el mismo navegador.
+        $rolNormalized = $this->normalizarRolATipo((string) $user->email_tipo);
 
-        if ($rolNormalized === 'coordinador' || $user->isCoordinador() || $user->isAdmin()) {
+        if ($rolNormalized === 'coordinador') {
             return route('coordinacion.index', [], false);
         }
 
-        if ($rolNormalized === 'tecnico' || $user->isTecnico()) {
+        if ($rolNormalized === 'tecnico') {
             return route('cuadrillas.index', [], false);
         }
 
-        if ($rolNormalized === 'almacen' || $user->isAlmacen()) {
+        if ($rolNormalized === 'almacen') {
             return route('almacen.index', [], false);
         }
 
         // Alumnos y Profesores (Solicitantes)
         return route('reportes.index', [], false);
+    }
+
+    /**
+     * Verify that a remembered account still has the institutional identity
+     * and role that were validated when it was allowed to sign in.
+     */
+    public function puedeUsarCuenta(User $user): bool
+    {
+        if (($user->estado_registro ?? 'aprobado') !== 'aprobado') {
+            return false;
+        }
+
+        $tipoDesdeCorreo = $this->obtenerTipoCuentaDesdeEmail((string) $user->email);
+
+        if ($tipoDesdeCorreo === null || $user->email_tipo !== $tipoDesdeCorreo) {
+            return false;
+        }
+
+        return $user->hasRol(ucfirst($tipoDesdeCorreo));
     }
 
     /**

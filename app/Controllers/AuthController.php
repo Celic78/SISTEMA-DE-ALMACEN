@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Rol;
 use App\Models\User;
 use App\Services\AuthService;
+use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -36,9 +38,11 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['email' => $exception->getMessage()]);
         }
 
-        Auth::login($resultado['user']);
+        $recordar = $request->boolean('remember');
+        Auth::login($resultado['user'], $recordar);
         $request->session()->regenerate();
         $request->session()->put('rol_activo', $resultado['rol_activo']);
+        $request->session()->put('recordar_sesion', $recordar);
 
         if ($resultado['user']->debe_cambiar_password) {
             $request->session()->put('acceso_temporal', true);
@@ -201,7 +205,18 @@ class AuthController extends Controller
             $reglas['nombres'] = ['required', 'string', 'max:100'];
             $reglas['apellido_paterno'] = ['required', 'string', 'max:76'];
             $reglas['apellido_materno'] = ['required', 'string', 'max:76'];
-            $reglas['password'] = ['required', 'string', 'min:8', 'max:72', 'confirmed'];
+            $reglas['password'] = [
+                'required',
+                'string',
+                'max:72',
+                PasswordRule::min(7)->mixedCase()->numbers()->symbols(),
+                'confirmed',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (self::contieneSecuenciasNumericas((string) $value)) {
+                        $fail('La contraseña no puede contener cuatro o más dígitos consecutivos o repetidos.');
+                    }
+                },
+            ];
         }
 
         $datos = $request->validate($reglas, ['email.*' => $mensaje, 'rol.*' => $mensaje], [
@@ -225,5 +240,32 @@ class AuthController extends Controller
         }
 
         return $datos;
+    }
+
+    private static function contieneSecuenciasNumericas(string $password): bool
+    {
+        if (preg_match('/([0-9])\1{3,}/', $password) === 1) {
+            return true;
+        }
+
+        preg_match_all('/[0-9]+/', $password, $coincidencias);
+        foreach ($coincidencias[0] as $secuencia) {
+            $digitos = array_map('intval', str_split($secuencia));
+            for ($indice = 0, $limite = count($digitos) - 3; $indice < $limite; $indice++) {
+                $ascendente = true;
+                $descendente = true;
+                for ($offset = 1; $offset < 4; $offset++) {
+                    $diferencia = $digitos[$indice + $offset] - $digitos[$indice + $offset - 1];
+                    $ascendente = $ascendente && $diferencia === 1;
+                    $descendente = $descendente && $diferencia === -1;
+                }
+
+                if ($ascendente || $descendente) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

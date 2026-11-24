@@ -28,6 +28,11 @@ class SecurityHeaders
         $camara = $request->routeIs('reportes.create', 'cuadrillas.index') ? '(self)' : '()';
         $response->headers->set('Permissions-Policy', "camera={$camara}, microphone=(), geolocation=()");
 
+        if ($request->user()) {
+            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+            $response->headers->set('Pragma', 'no-cache');
+        }
+
         return $response;
     }
 }

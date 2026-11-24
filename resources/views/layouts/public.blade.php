@@ -25,7 +25,8 @@
             <nav aria-label="Navegación principal">
                 <a href="{{ route('home') }}" @if (request()->routeIs('home')) aria-current="page" @endif>Inicio</a>
                 <a href="{{ route('servicios') }}" @if (request()->routeIs('servicios')) aria-current="page" @endif>Servicios</a>
-                @auth
+                @php($usuarioAutorizado = auth()->check() && app(\App\Services\AuthService::class)->puedeUsarCuenta(auth()->user()))
+                @if ($usuarioAutorizado)
                     <a class="button button-primary" href="{{ route('dashboard') }}">Mi panel</a>
                 @else
                     <a class="button button-primary" href="{{ route('login') }}">Iniciar sesión</a>
