@@ -13,7 +13,6 @@ class UsuarioRol extends Pivot
         'id_usuario',
         'id_rol',
         'turno_tecnico',
-        'especialidad_tecnico',
     ];
 
     /**

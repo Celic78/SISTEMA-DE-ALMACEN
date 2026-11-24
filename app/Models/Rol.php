@@ -25,7 +25,7 @@ class Rol extends Model
     {
         return $this->belongsToMany(User::class, 'usuario_rol', 'id_rol', 'id_usuario')
             ->using(UsuarioRol::class)
-            ->withPivot('turno_tecnico', 'especialidad_tecnico')
+            ->withPivot('turno_tecnico')
             ->withTimestamps();
     }
 }

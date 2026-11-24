@@ -14,6 +14,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(CatalogoPlantelSeeder::class);
+
         foreach (['Electrónico', 'Eléctrico', 'Inmueble', 'Accesorio', 'Plomería', 'Otro'] as $categoria) {
             CategoriaSolicitud::firstOrCreate(['nombre_categoria' => $categoria]);
         }
@@ -53,7 +55,6 @@ class DatabaseSeeder extends Seeder
                     if ($usuario->wasRecentlyCreated) {
                         $usuario->roles()->attach($rol->getKey(), $tipo === 'tecnico' ? [
                             'turno_tecnico' => $indice === 0 ? 'matutino' : 'vespertino',
-                            'especialidad_tecnico' => $indice === 0 ? 'Electricidad' : 'Plomería',
                         ] : []);
                     }
                 }

@@ -10,6 +10,8 @@ class Plantel extends Model
 {
     use HasFactory;
 
+    public const PRINCIPAL = 'Plantel principal';
+
     protected $table = 'planteles';
 
     protected $primaryKey = 'id_plantel';

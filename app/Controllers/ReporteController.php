@@ -5,6 +5,8 @@ namespace App\Controllers;
 use App\Exceptions\BusinessRuleException;
 use App\Http\Controllers\Controller;
 use App\Models\CategoriaSolicitud;
+use App\Models\Espacio;
+use App\Models\Plantel;
 use App\Services\SolicitudService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -14,6 +16,12 @@ use Illuminate\Validation\ValidationException;
 
 class ReporteController extends Controller
 {
+    private const DIAS_DE_ANTIGUEDAD = 7;
+
+    private const HORA_MINIMA = '07:00';
+
+    private const HORA_MAXIMA = '19:00';
+
     public function __construct(protected SolicitudService $solicitudService) {}
 
     public function index(Request $request): View
@@ -28,29 +36,67 @@ class ReporteController extends Controller
 
     public function crear(): View
     {
-        return view('reportes.crear', ['momentoDelReporte' => now()]);
+        $plantel = Plantel::where('nombre', Plantel::PRINCIPAL)->first();
+        $edificios = $plantel?->edificios()->with('espacios')->orderBy('nombre')->get() ?? collect();
+
+        $momentoDelReporte = now('America/Mexico_City');
+
+        return view('reportes.crear', [
+            'momentoDelReporte' => $momentoDelReporte,
+            'fechaMinima' => $momentoDelReporte->copy()->subDays(self::DIAS_DE_ANTIGUEDAD),
+            'edificios' => $edificios,
+            'horaMinima' => self::HORA_MINIMA,
+            'horaMaxima' => self::HORA_MAXIMA,
+            'horaPredeterminada' => min(self::HORA_MAXIMA, max(self::HORA_MINIMA, $momentoDelReporte->format('H:i'))),
+        ]);
     }
 
     public function guardar(Request $request): RedirectResponse
     {
+        if ($request->has('hora_hallazgo')) {
+            $fecha = $request->validate([
+                'fecha_hallazgo' => ['required', 'date_format:Y-m-d'],
+                'hora_hallazgo' => ['required', 'date_format:H:i'],
+            ]);
+            $request->merge(['fecha_hallazgo' => $fecha['fecha_hallazgo'].'T'.$fecha['hora_hallazgo']]);
+        }
         $datos = $request->validate([
-            'ubicacion_libre' => ['required', 'string', 'max:255'],
+            'id_edificio' => ['required', 'integer'],
+            'id_espacio' => ['required', 'integer'],
             'descripcion_falla' => ['required', 'string', 'min:10', 'max:2000'],
             'fecha_hallazgo' => ['required', 'date_format:Y-m-d\TH:i'],
             'evidencia' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
         ]);
 
-        if (substr($datos['fecha_hallazgo'], 0, 10) !== now()->toDateString()) {
+        $hoy = now('America/Mexico_City');
+        $dia = substr($datos['fecha_hallazgo'], 0, 10);
+        if ($dia < $hoy->copy()->subDays(self::DIAS_DE_ANTIGUEDAD)->toDateString() || $dia > $hoy->toDateString()) {
             throw ValidationException::withMessages([
-                'fecha_hallazgo' => 'La fecha del hallazgo debe ser la de hoy.',
+                'fecha_hallazgo' => 'Selecciona hoy o uno de los siete días anteriores.',
             ]);
         }
 
+        $hora = substr($datos['fecha_hallazgo'], 11, 5);
+        if ($hora < self::HORA_MINIMA || $hora > self::HORA_MAXIMA) {
+            throw ValidationException::withMessages([
+                'hora_hallazgo' => 'La hora del hallazgo debe estar entre las 07:00 y las 19:00.',
+            ]);
+        }
+
+        $espacio = Espacio::with('edificio')->where('id_edificio', $datos['id_edificio'])
+            ->whereHas('edificio.plantel', fn ($query) => $query->where('nombre', Plantel::PRINCIPAL))
+            ->find($datos['id_espacio']);
+
+        if (! $espacio) {
+            throw ValidationException::withMessages(['id_espacio' => 'Selecciona un espacio que pertenezca al edificio elegido.']);
+        }
+
+        $datos['ubicacion_libre'] = $espacio->edificio->nombre.' · '.$espacio->nombre_espacio;
         $datos['id_categoria'] = CategoriaSolicitud::firstOrCreate(['nombre_categoria' => CategoriaSolicitud::INMUEBLE])->getKey();
         $archivo = $request->file('evidencia');
-        $datos['fecha_hallazgo'] = Carbon::parse($datos['fecha_hallazgo'])->format('Y-m-d H:i:s');
+        $datos['fecha_hallazgo'] = Carbon::parse($datos['fecha_hallazgo'], 'America/Mexico_City')->format('Y-m-d H:i:s');
         $datos['huella_reporte'] = hash('sha256', json_encode([
-            $datos['ubicacion_libre'],
+            $espacio->getKey(),
             (int) $datos['id_categoria'],
             $datos['descripcion_falla'],
             $datos['fecha_hallazgo'],

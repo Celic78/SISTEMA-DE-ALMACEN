@@ -179,7 +179,7 @@ class CoordinacionController extends Controller
     }
 
     /**
-     * Asigna cuadrilla técnica a una orden o folio maestro filtrando por especialidad y turno laboral.
+     * Asigna cuadrilla técnica a una orden o folio maestro validando el turno laboral.
      *
      * @param  Request|string|int  $folioMaestro
      * @param  int|null  $tecnicoId
@@ -230,9 +230,8 @@ class CoordinacionController extends Controller
                 : back()->with('error', $errorMsg);
         }
 
-        // 3. Filtrado y validación por turno y especialidad requerida
+        // 3. Filtrado y validación por turno
         $turnoAsignar = $turno ?? $this->coordinacionService->determinarTurnoActual() ?? 'Matutino';
-        $especialidadRequerida = $orden->solicitud?->categoria?->nombre_categoria ?? '';
 
         // Buscar compatibilidad en roles pivot
         $rolTecnicoPivot = $tecnico->roles()
@@ -240,7 +239,6 @@ class CoordinacionController extends Controller
             ->first();
 
         $turnoTecnico = $rolTecnicoPivot?->pivot?->turno_tecnico;
-        $especialidadTecnico = $rolTecnicoPivot?->pivot?->especialidad_tecnico;
 
         // Validar turno si está especificado
         if ($turnoTecnico !== null && ! empty($turnoAsignar) && ! str_contains(mb_strtolower($turnoTecnico), mb_strtolower($turnoAsignar))) {

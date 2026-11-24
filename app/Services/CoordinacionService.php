@@ -234,25 +234,19 @@ class CoordinacionService
     }
 
     /**
-     * Retrieve available technicians crossing specialty and operational shift.
+     * Retrieve available technicians by operational shift.
      *
      * @return Collection<int, User>
      */
-    public function obtenerTecnicosDisponibles(string $especialidad, ?string $turno = null): Collection
+    public function obtenerTecnicosDisponibles(?string $turno = null): Collection
     {
         $turnoFiltro = $turno ?? $this->determinarTurnoActual();
 
-        return User::whereHas('roles', function ($q) use ($especialidad, $turnoFiltro) {
+        return User::whereHas('roles', function ($q) use ($turnoFiltro) {
             $q->where(function ($sub) {
                 $sub->where('nombre_rol', 'Tecnico')
                     ->orWhere('nombre_rol', 'Técnico');
             });
-
-            if ($especialidad !== '') {
-                $q->where(function ($sub) use ($especialidad) {
-                    $sub->where('usuario_rol.especialidad_tecnico', 'like', "%{$especialidad}%");
-                });
-            }
 
             if ($turnoFiltro !== null) {
                 $q->where(function ($sub) use ($turnoFiltro) {

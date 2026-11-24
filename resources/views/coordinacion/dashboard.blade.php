@@ -102,7 +102,7 @@
                                     @php
                                         $perfil = $tecnico->roles->first()?->pivot;
                                     @endphp
-                                    <option value="{{ $tecnico->getKey() }}">{{ $tecnico->name }} · {{ $perfil?->especialidad_tecnico ?? 'Sin especialidad' }} · {{ $perfil?->turno_tecnico ?? 'Sin turno' }}</option>
+                                    <option value="{{ $tecnico->getKey() }}">{{ $tecnico->name }} · {{ $perfil?->turno_tecnico ?? 'Sin turno' }}</option>
                                 @endforeach
                             </select>
                         </label>

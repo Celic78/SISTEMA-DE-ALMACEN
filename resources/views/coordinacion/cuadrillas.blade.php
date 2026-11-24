@@ -14,9 +14,6 @@
                 <form method="POST" action="{{ route('coordinacion.cuadrillas.actualizar', $tecnico) }}" class="mt-3 flex flex-wrap items-end gap-3">
                     @csrf
                     @method('PATCH')
-                    <label>Especialidad
-                        <input class="block rounded border p-2" name="especialidad_tecnico" value="{{ $perfil->especialidad_tecnico }}" maxlength="100" required>
-                    </label>
                     <label>Turno
                         <select class="block rounded border p-2" name="turno_tecnico" required>
                             <option value="">Selecciona un turno</option>
@@ -24,7 +21,7 @@
                             <option value="vespertino" @selected($perfil->turno_tecnico === 'vespertino')>Vespertino · 13:00–19:00</option>
                         </select>
                     </label>
-                    <button class="button button-primary" type="submit">Guardar perfil</button>
+                    <button class="button button-primary" type="submit">Guardar turno</button>
                 </form>
             </article>
         @empty

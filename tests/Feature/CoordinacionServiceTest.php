@@ -216,38 +216,31 @@ class CoordinacionServiceTest extends TestCase
         $this->assertNull($this->coordinacionService->determinarTurnoActual($horaNocturna));
     }
 
-    public function test_obtener_tecnicos_disponibles_filtra_por_especialidad_y_turno(): void
+    public function test_obtener_tecnicos_disponibles_filtra_solo_por_turno(): void
     {
         $rolTecnico = Rol::create(['nombre_rol' => 'Tecnico']);
 
-        // Técnico electricista matutino
-        $tecnicoElecMat = User::factory()->create();
-        $tecnicoElecMat->roles()->attach($rolTecnico->id_rol, [
-            'especialidad_tecnico' => 'Electricidad',
+        $primerTecnicoMatutino = User::factory()->create();
+        $primerTecnicoMatutino->roles()->attach($rolTecnico->id_rol, [
             'turno_tecnico' => 'Matutino',
         ]);
 
-        // Técnico electricista vespertino
-        $tecnicoElecVesp = User::factory()->create();
-        $tecnicoElecVesp->roles()->attach($rolTecnico->id_rol, [
-            'especialidad_tecnico' => 'Electricidad',
+        $tecnicoVespertino = User::factory()->create();
+        $tecnicoVespertino->roles()->attach($rolTecnico->id_rol, [
             'turno_tecnico' => 'Vespertino',
         ]);
 
-        // Técnico plomero matutino
-        $tecnicoPlomMat = User::factory()->create();
-        $tecnicoPlomMat->roles()->attach($rolTecnico->id_rol, [
-            'especialidad_tecnico' => 'Plomería',
+        $segundoTecnicoMatutino = User::factory()->create();
+        $segundoTecnicoMatutino->roles()->attach($rolTecnico->id_rol, [
             'turno_tecnico' => 'Matutino',
         ]);
 
-        // Consulta: Electricidad en turno Matutino
-        $disponibles = $this->coordinacionService->obtenerTecnicosDisponibles('Electricidad', 'Matutino');
+        $disponibles = $this->coordinacionService->obtenerTecnicosDisponibles('Matutino');
 
-        $this->assertCount(1, $disponibles);
-        $this->assertTrue($disponibles->contains('id', $tecnicoElecMat->id));
-        $this->assertFalse($disponibles->contains('id', $tecnicoElecVesp->id));
-        $this->assertFalse($disponibles->contains('id', $tecnicoPlomMat->id));
+        $this->assertCount(2, $disponibles);
+        $this->assertTrue($disponibles->contains('id', $primerTecnicoMatutino->id));
+        $this->assertFalse($disponibles->contains('id', $tecnicoVespertino->id));
+        $this->assertTrue($disponibles->contains('id', $segundoTecnicoMatutino->id));
     }
 
     protected function crearSolicitudPrueba(): Solicitud

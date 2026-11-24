@@ -4,6 +4,7 @@ use App\Controllers\AlmacenController;
 use App\Controllers\AuthController;
 use App\Controllers\ReporteController;
 use App\Controllers\TecnicoController;
+use App\Controllers\UbicacionController;
 use App\Exceptions\BusinessRuleException;
 use App\Http\Middleware\RequirePersonalPassword;
 use App\Models\BitacoraSistema;
@@ -76,6 +77,9 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
     });
 
     Route::middleware('role:Coordinador')->group(function (): void {
+        Route::get('/coordinacion/ubicaciones', [UbicacionController::class, 'index'])->name('coordinacion.ubicaciones');
+        Route::post('/coordinacion/ubicaciones/edificios', [UbicacionController::class, 'guardarEdificio'])->name('coordinacion.ubicaciones.edificios');
+        Route::post('/coordinacion/ubicaciones/espacios', [UbicacionController::class, 'guardarEspacio'])->name('coordinacion.ubicaciones.espacios');
         Route::post('/coordinacion/personal', [AuthController::class, 'crearPersonal'])->name('coordinacion.personal.store');
         Route::get('/coordinacion', function (Request $request): View {
             $estados = match ($request->query('estado')) {
@@ -266,7 +270,6 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
             abort_unless($usuario->email_tipo === 'tecnico' && $usuario->estado_registro === 'aprobado', 404);
             $rol = $usuario->roles()->where('nombre_rol', 'Tecnico')->firstOrFail();
             $datos = $request->validate([
-                'especialidad_tecnico' => ['required', 'string', 'max:100'],
                 'turno_tecnico' => ['required', 'in:matutino,vespertino'],
             ]);
             $usuario->roles()->updateExistingPivot($rol->getKey(), $datos);

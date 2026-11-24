@@ -47,7 +47,7 @@ class SimicDemoSeeder extends Seeder
         foreach ($accounts as $type => [$name, $email, $roleName]) {
             $role = Rol::firstOrCreate(['nombre_rol' => $roleName]);
             $user = User::firstOrCreate(['email' => $email], ['name' => $name, 'password' => 'SimicDemo2026!', 'email_tipo' => $type]);
-            $user->roles()->syncWithoutDetaching([$role->id_rol => $type === 'tecnico' ? ['turno_tecnico' => 'Matutino', 'especialidad_tecnico' => 'Electricidad'] : []]);
+            $user->roles()->syncWithoutDetaching([$role->id_rol => $type === 'tecnico' ? ['turno_tecnico' => 'Matutino'] : []]);
             $users[$type] = $user;
         }
         $section = SeccionAlmacen::firstOrCreate(['nombre_seccion' => 'Eléctrico'], ['ubicacion_almacen' => 'Anaquel E-02 · Gaveta 4']);

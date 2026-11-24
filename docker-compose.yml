@@ -1,47 +1,64 @@
+x-app: &app
+  image: sistema-almacen-app:local
+  build:
+    context: .
+    dockerfile: Dockerfile.txt
+  environment:
+    APP_ENV: local
+    APP_DEBUG: "false"
+    APP_KEY: ${APP_KEY:?Configura APP_KEY en el archivo .env}
+    APP_URL: http://127.0.0.1:${APP_DOCKER_PORT:-8080}
+    DB_CONNECTION: mariadb
+    DB_HOST: db
+    DB_DATABASE: sistema_almacen
+    DB_USERNAME: app_user
+    DB_PASSWORD: ${DB_DOCKER_PASSWORD:-app_password}
+    MAIL_MAILER: log
+  volumes:
+    - laravel_storage:/var/www/html/storage
+
 services:
-  # Contenedor 1: Servidor Web PHP + Apache
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile.txt
+    <<: *app
     ports:
-      - "8080:80"
-    volumes:
-      - .:/var/www/html
+      - "127.0.0.1:${APP_DOCKER_PORT:-8080}:80"
     depends_on:
-      - db
-    environment: &app_database
-      DB_CONNECTION: mariadb
-      DB_HOST: db
-      DB_DATABASE: sistema_almacen
-      DB_USERNAME: app_user
-      DB_PASSWORD: ${DB_DOCKER_PASSWORD:-app_password}
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    <<: *app
+    user: www-data
+    command: ["php", "artisan", "migrate", "--force", "--no-interaction"]
+    depends_on:
+      db:
+        condition: service_healthy
 
   scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile.txt
+    <<: *app
+    user: www-data
     command: ["php", "artisan", "schedule:work", "--no-interaction"]
-    volumes:
-      - .:/var/www/html
     depends_on:
-      - db
-    environment: *app_database
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
-  # Contenedor 2: Base de Datos MariaDB
   db:
     image: mariadb:10.11
-    restart: always
+    restart: unless-stopped
     environment:
       MARIADB_RANDOM_ROOT_PASSWORD: "1"
       MARIADB_DATABASE: sistema_almacen
       MARIADB_USER: app_user
       MARIADB_PASSWORD: ${DB_DOCKER_PASSWORD:-app_password}
-    ports:
-      - "127.0.0.1:3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     volumes:
       - mariadb_data:/var/lib/mysql
 
 volumes:
   mariadb_data:
+  laravel_storage:

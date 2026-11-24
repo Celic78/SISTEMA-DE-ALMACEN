@@ -22,7 +22,7 @@
             default => $persona->isAdmin() ? 'Administrador' : 'Solicitante',
         };
         $enlaces = match ($persona->email_tipo) {
-            'coordinador' => ['coordinacion.index' => 'Incidencias', 'coordinacion.cuadrillas' => 'Cuadrillas', 'coordinacion.registros' => 'Perfiles', 'coordinacion.avisos.index' => 'Avisos de mantenimiento', 'reportes.create' => 'Nuevo reporte', 'reportes.index' => 'Mis reportes'],
+            'coordinador' => ['coordinacion.index' => 'Incidencias', 'coordinacion.cuadrillas' => 'Cuadrillas', 'coordinacion.registros' => 'Perfiles', 'coordinacion.ubicaciones' => 'Edificios y espacios', 'coordinacion.avisos.index' => 'Avisos de mantenimiento', 'reportes.create' => 'Nuevo reporte', 'reportes.index' => 'Mis reportes'],
             'tecnico' => ['cuadrillas.index' => 'Órdenes asignadas'],
             'almacen' => [],
             default => ['reportes.create' => 'Nuevo reporte', 'reportes.index' => 'Mis reportes', 'reportes.estado' => 'Estado de reporte'],

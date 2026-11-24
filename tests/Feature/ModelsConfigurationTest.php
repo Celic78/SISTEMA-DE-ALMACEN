@@ -130,7 +130,6 @@ class ModelsConfigurationTest extends TestCase
         ]);
         $user->roles()->attach($rol->id_rol, [
             'turno_tecnico' => 'Matutino',
-            'especialidad_tecnico' => 'Electricidad',
         ]);
         $this->assertTrue($user->hasRol('Tecnico'));
 

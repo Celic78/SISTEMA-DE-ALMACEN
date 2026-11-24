@@ -10,18 +10,87 @@
             @csrf
             <div data-step>
                 <h2>1. Ubicación</h2>
-                <label>¿Dónde ocurrió la falla?
-                    <input name="ubicacion_libre" value="{{ old('ubicacion_libre') }}" maxlength="255" placeholder="Ej. Edificio A, aula 204" required>
+                <label>Edificio
+                    <select name="id_edificio" data-report-building required>
+                        <option value="">Selecciona un edificio</option>
+                        @foreach ($edificios as $edificio)
+                            <option value="{{ $edificio->getKey() }}" @selected((string) old('id_edificio') === (string) $edificio->getKey())>{{ $edificio->nombre }}</option>
+                        @endforeach
+                    </select>
                 </label>
+                <label data-report-space-kind-wrapper hidden>Tipo de espacio
+                    <select data-report-space-kind></select>
+                </label>
+                <label><span data-report-space-label>Espacio</span>
+                    <select name="id_espacio" data-report-space data-selected="{{ is_scalar(old('id_espacio')) ? old('id_espacio') : '' }}" required>
+                        <option value="">Primero selecciona un edificio</option>
+                    </select>
+                </label>
+                <template data-report-space-catalog>
+                    <select>
+                        @foreach ($edificios as $edificio)
+                            @foreach ($edificio->espacios->sortBy('nombre_espacio', SORT_NATURAL | SORT_FLAG_CASE) as $espacio)
+                                <option value="{{ $espacio->getKey() }}" data-building="{{ $edificio->getKey() }}" data-kind="{{ $espacio->tipo_espacio }}" data-space-name="{{ $espacio->nombre_espacio }}">{{ $edificio->nombre }} · {{ $espacio->nombre_espacio }}</option>
+                            @endforeach
+                        @endforeach
+                    </select>
+                </template>
+                <noscript>Activa JavaScript para seleccionar el espacio del reporte.</noscript>
             </div>
             <div data-step>
                 <h2>2. Descripción</h2>
-                <label>Fecha y hora del hallazgo
-                    @php($hoy = $momentoDelReporte->toDateString())
-                    @php($fechaAnterior = old('fecha_hallazgo'))
-                    <input type="datetime-local" name="fecha_hallazgo"
-                        min="{{ $hoy }}T00:00" max="{{ $hoy }}T23:59"
-                        value="{{ is_string($fechaAnterior) && str_starts_with($fechaAnterior, $hoy.'T') ? $fechaAnterior : $momentoDelReporte->format('Y-m-d\TH:i') }}" required>
+                @php
+                    $minima = $fechaMinima->toDateString();
+                    $hoy = $momentoDelReporte->toDateString();
+                    $seleccionada = old('fecha_hallazgo', $hoy);
+                    if (! is_string($seleccionada) || $seleccionada < $minima || $seleccionada > $hoy) {
+                        $seleccionada = $hoy;
+                    }
+                    $meses = collect([$fechaMinima, $momentoDelReporte])->unique(fn ($fecha) => $fecha->format('Y-m'));
+                @endphp
+                <details class="report-calendar" data-report-calendar>
+                    <summary>Fecha del hallazgo · <span data-report-calendar-date>{{ \Illuminate\Support\Carbon::parse($seleccionada)->format('d/m/Y') }}</span></summary>
+                    @foreach ($meses as $mes)
+                        @php($primerDia = $mes->copy()->startOfMonth()->dayOfWeekIso)
+                        <table>
+                            <caption>{{ $mes->copy()->locale('es')->translatedFormat('F Y') }}</caption>
+                            <thead>
+                                <tr>
+                                    @foreach (['L', 'M', 'X', 'J', 'V', 'S', 'D'] as $diaSemana)
+                                        <th scope="col">{{ $diaSemana }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (array_chunk(range(2 - $primerDia, 43 - $primerDia), 7) as $semana)
+                                    @if ($semana[0] <= $mes->daysInMonth)
+                                        <tr>
+                                            @foreach ($semana as $dia)
+                                                <td>
+                                                    @if ($dia > 0 && $dia <= $mes->daysInMonth)
+                                                        @php($fecha = $mes->copy()->day($dia))
+                                                        @php($valor = $fecha->toDateString())
+                                                        @if ($valor >= $minima && $valor <= $hoy)
+                                                            <label class="report-calendar-option">
+                                                                <input type="radio" name="fecha_hallazgo" value="{{ $valor }}" data-date-label="{{ $fecha->format('d/m/Y') }}" aria-label="{{ $fecha->format('d/m/Y') }}" @checked($seleccionada === $valor) required>
+                                                                <span @if ($valor === $hoy) aria-current="date" @endif>{{ $dia }}</span>
+                                                            </label>
+                                                        @else
+                                                            <span class="report-calendar-disabled" aria-disabled="true">{{ $dia }}</span>
+                                                        @endif
+                                                    @endif
+                                                </td>
+                                            @endforeach
+                                        </tr>
+                                    @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endforeach
+                    <p>Puedes elegir hoy o cualquiera de los siete días anteriores.</p>
+                </details>
+                <label>Hora del hallazgo (07:00 a 19:00, centro de México)
+                    <input type="time" name="hora_hallazgo" min="{{ $horaMinima }}" max="{{ $horaMaxima }}" value="{{ old('hora_hallazgo', $horaPredeterminada) }}" required>
                 </label>
                 <label>Describe la falla del inmueble
                     <textarea name="descripcion_falla" rows="4" placeholder="Ej. La puerta del aula no cierra correctamente." minlength="10" maxlength="2000" class="rounded-lg border border-slate-300 p-2" required>{{ old('descripcion_falla') }}</textarea>
@@ -45,5 +114,5 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('mantresc-reporte.js') }}"></script>
+    <script src="{{ asset('mantresc-reporte.js').'?v=3' }}"></script>
 @endpush

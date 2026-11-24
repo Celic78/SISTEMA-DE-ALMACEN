@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\BitacoraSistema;
 use App\Models\CategoriaSolicitud;
+use App\Models\Edificio;
+use App\Models\Espacio;
 use App\Models\Material;
 use App\Models\MovimientoMaterial;
 use App\Models\OrdenTrabajo;
@@ -217,11 +219,16 @@ class ExampleTest extends TestCase
         $coordinadora = User::where('email', 'clara.ruiz@coordinador.mx')->firstOrFail();
         $tecnico = User::where('email', 'pablo.cruz@tecnico.mx')->firstOrFail();
         $imagen = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXwAAAABJRU5ErkJggg==');
+        $hoy = now('America/Mexico_City');
+        $edificio = Edificio::where('nombre', 'Edificio 1')->firstOrFail();
+        $aula = $edificio->espacios()->where('nombre_espacio', 'Aula 1')->firstOrFail();
+        $laboratorio = Espacio::where('nombre_espacio', 'Laboratorio de cómputo 1')->firstOrFail();
         $datos = [
-            'ubicacion_libre' => 'Edificio A, salón 204',
+            'id_edificio' => $edificio->getKey(),
+            'id_espacio' => $aula->getKey(),
             'id_categoria' => CategoriaSolicitud::firstOrFail()->getKey(),
             'descripcion_falla' => 'La puerta del aula no cierra correctamente.',
-            'fecha_hallazgo' => now()->format('Y-m-d\TH:i'),
+            'fecha_hallazgo' => $hoy->copy()->subDays(7)->format('Y-m-d').'T07:00',
         ];
 
         $this->actingAs($alumna)->get(route('reportes.create'))->assertOk()
@@ -229,25 +236,39 @@ class ExampleTest extends TestCase
             ->assertSee('data-open-camera', false)
             ->assertSee('data-evidence-previews', false)
             ->assertSee('Describe la falla del inmueble')
-            ->assertSee('min="'.now()->toDateString().'T00:00"', false)
-            ->assertSee('max="'.now()->toDateString().'T23:59"', false)
-            ->assertSee('value="'.$datos['fecha_hallazgo'].'"', false)
+            ->assertSee('class="report-calendar-disabled"', false)
+            ->assertSee('aria-current="date"', false)
+            ->assertSee('name="hora_hallazgo"', false)
             ->assertDontSee('name="id_categoria"', false);
-        foreach ([now()->subDay(), now()->addDays(2)] as $fechaInvalida) {
+        foreach ([$hoy->copy()->subDays(8), $hoy->copy()->addDays(2)] as $fechaInvalida) {
             $this->post(route('reportes.store'), array_replace($datos, [
-                'fecha_hallazgo' => $fechaInvalida->format('Y-m-d\TH:i'),
+                'fecha_hallazgo' => $fechaInvalida->format('Y-m-d').'T12:00',
                 'evidencia' => UploadedFile::fake()->createWithContent('falla.png', $imagen),
             ]))->assertSessionHasErrors('fecha_hallazgo');
         }
-        $this->assertDatabaseCount('solicitudes', 0);
-        $this->post(route('reportes.store'), $datos + [
+        $this->post(route('reportes.store'), array_replace($datos, [
+            'id_espacio' => $laboratorio->getKey(),
             'evidencia' => UploadedFile::fake()->createWithContent('falla.png', $imagen),
-        ])->assertSessionHasNoErrors()->assertRedirect(route('reportes.index'));
+        ]))->assertSessionHasErrors('id_espacio');
+        foreach (['06:59', '19:01'] as $horaInvalida) {
+            $this->post(route('reportes.store'), array_replace($datos, [
+                'fecha_hallazgo' => $hoy->toDateString(),
+                'hora_hallazgo' => $horaInvalida,
+                'evidencia' => UploadedFile::fake()->createWithContent('falla.png', $imagen),
+            ]))->assertSessionHasErrors('hora_hallazgo');
+        }
+        $this->assertDatabaseCount('solicitudes', 0);
+        $this->post(route('reportes.store'), array_replace($datos, [
+            'fecha_hallazgo' => $hoy->copy()->subDays(7)->toDateString(),
+            'hora_hallazgo' => '07:00',
+            'evidencia' => UploadedFile::fake()->createWithContent('falla.png', $imagen),
+        ]))->assertSessionHasNoErrors()->assertRedirect(route('reportes.index'));
         $this->post(route('reportes.store'), $datos + [
             'evidencia' => UploadedFile::fake()->createWithContent('otra.png', $imagen),
         ])->assertSessionHasErrors('reporte');
 
         $orden = OrdenTrabajo::firstOrFail();
+        $this->assertSame($aula->getKey(), $orden->solicitud->id_espacio);
         $rutaFoto = parse_url($orden->solicitud->evidencia_url, PHP_URL_PATH);
         $this->get(route('reportes.index'))->assertOk()
             ->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
@@ -300,15 +321,37 @@ class ExampleTest extends TestCase
         $this->get(route('coordinacion.index', ['estado' => 'terminadas']))->assertOk()->assertSee('$125.50');
     }
 
+    public function test_coordination_can_add_a_building_and_lab_to_the_report_catalog(): void
+    {
+        $this->seed();
+        $coordinadora = User::where('email_tipo', 'coordinador')->firstOrFail();
+        $alumna = User::where('email_tipo', 'alumno')->firstOrFail();
+        $edificioDatos = ['nombre' => 'Edificio 6'];
+
+        $this->actingAs($alumna)->post(route('coordinacion.ubicaciones.edificios'), $edificioDatos)
+            ->assertForbidden();
+        $this->actingAs($coordinadora)->post(route('coordinacion.ubicaciones.edificios'), $edificioDatos)
+            ->assertRedirectToRoute('coordinacion.ubicaciones')->assertSessionHasNoErrors();
+        $edificio = Edificio::where('nombre', 'Edificio 6')->firstOrFail();
+        $this->post(route('coordinacion.ubicaciones.espacios'), [
+            'id_edificio' => $edificio->getKey(),
+            'nombre_espacio' => 'Laboratorio 1',
+            'tipo_espacio' => 'Laboratorio',
+        ])->assertRedirectToRoute('coordinacion.ubicaciones')->assertSessionHasNoErrors();
+
+        $this->actingAs($alumna)->get(route('reportes.create'))->assertOk()
+            ->assertSee('Edificio 6 · Laboratorio 1');
+    }
+
     public function test_coordinator_can_manage_technical_profiles(): void
     {
         $this->seed();
         $coordinadora = User::where('email', 'clara.ruiz@coordinador.mx')->firstOrFail();
         $tecnico = User::where('email', 'pablo.cruz@tecnico.mx')->firstOrFail();
-        $datos = ['especialidad_tecnico' => 'Electrónica', 'turno_tecnico' => 'vespertino'];
+        $datos = ['turno_tecnico' => 'vespertino'];
 
         $this->actingAs($tecnico)->patch(route('coordinacion.cuadrillas.actualizar', $tecnico), $datos)->assertForbidden();
-        $this->actingAs($coordinadora)->get(route('coordinacion.cuadrillas'))->assertOk()->assertSee($tecnico->name);
+        $this->actingAs($coordinadora)->get(route('coordinacion.cuadrillas'))->assertOk()->assertSee($tecnico->name)->assertDontSee('Especialidad');
         $this->patch(route('coordinacion.cuadrillas.actualizar', $tecnico), $datos)->assertSessionHasNoErrors();
         $this->assertDatabaseHas('usuario_rol', ['id_usuario' => $tecnico->getKey(), ...$datos]);
     }
