@@ -61,7 +61,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'max:254'],
             'rol' => ['required', 'in:tecnico,profesor,almacen'],
-            'password' => ['required', 'string', 'min:8', 'max:72'],
+            'password' => ['required', 'string', 'min:8', 'max:20'],
         ]);
         $email = mb_strtolower($datos['email']);
         try {
@@ -107,7 +107,7 @@ class AuthController extends Controller
         }
 
         $datos = $request->validate([
-            'password' => ['required', 'string', 'min:8', 'max:72', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'max:20', 'confirmed'],
         ]);
         if (Hash::check($datos['password'], $usuario->password)) {
             throw ValidationException::withMessages(['password' => 'Elige una contraseña distinta de la temporal.']);
@@ -166,7 +166,7 @@ class AuthController extends Controller
         $datos = $request->validate([
             'email' => ['required', 'email', 'max:254'],
             'token' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'max:72', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'max:20', 'confirmed'],
         ]);
         $datos['email'] = mb_strtolower($datos['email']);
         $estado = Password::reset($datos, function (User $usuario, string $password): void {
@@ -197,7 +197,7 @@ class AuthController extends Controller
         $mensaje = 'Error, los datos ingresados no coinciden';
         $reglas = [
             'email' => ['required', 'string', 'max:254'],
-            'password' => ['required', 'string', 'max:72'],
+            'password' => ['required', 'string', 'max:20'],
         ];
 
         if ($registro) {
@@ -208,7 +208,7 @@ class AuthController extends Controller
             $reglas['password'] = [
                 'required',
                 'string',
-                'max:72',
+                'max:20',
                 PasswordRule::min(7)->mixedCase()->numbers()->symbols(),
                 'confirmed',
                 function (string $attribute, mixed $value, Closure $fail): void {

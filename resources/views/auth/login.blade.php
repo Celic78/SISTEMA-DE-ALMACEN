@@ -73,7 +73,7 @@
                 </div>
                 @if ($registro)
                     <ul class="password-requirements" data-password-requirements aria-label="Requisitos de la contrase&#241;a">
-                        <li data-requirement="length"><span aria-hidden="true">&#10007;</span><span>Entre 7 y 72 caracteres</span></li>
+                        <li data-requirement="length"><span aria-hidden="true">&#10007;</span><span>Mínimo 7 caracteres</span></li>
                         <li data-requirement="uppercase"><span aria-hidden="true">&#10007;</span><span>Al menos una letra may&#250;scula</span></li>
                         <li data-requirement="lowercase"><span aria-hidden="true">&#10007;</span><span>Al menos una letra min&#250;scula</span></li>
                         <li data-requirement="number"><span aria-hidden="true">&#10007;</span><span>Al menos un n&#250;mero</span></li>
@@ -149,7 +149,7 @@
                 const update = () => {
                     const value = password.value;
                     const checks = {
-                        length: value.length >= 7 && value.length <= 72,
+                        length: value.length >= 7 && value.length <= 20,
                         uppercase: /[A-Z]/.test(value),
                         lowercase: /[a-z]/.test(value),
                         number: /[0-9]/.test(value),

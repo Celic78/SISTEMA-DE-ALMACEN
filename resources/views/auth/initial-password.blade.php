@@ -9,8 +9,8 @@
         @include('partials.alerts')
         <form method="POST" action="{{ route('password.initial.update') }}">
             @csrf
-            <label>Nueva contraseña <input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="72" required></label>
-            <label>Confirma tu nueva contraseña <input type="password" name="password_confirmation" autocomplete="new-password" minlength="8" maxlength="72" required></label>
+            <label>Nueva contraseña <input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="20" required></label>
+            <label>Confirma tu nueva contraseña <input type="password" name="password_confirmation" autocomplete="new-password" minlength="8" maxlength="20" required></label>
             <button class="button button-primary">Guardar contraseña</button>
         </form>
         <form method="POST" action="{{ route('logout') }}">

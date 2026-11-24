@@ -38,7 +38,7 @@
                 </select>
             </label>
             <label class="grid gap-1">Correo institucional <input class="rounded border p-2" name="email" type="email" maxlength="254" value="{{ old('email') }}" required></label>
-            <label class="grid gap-1">Contraseña temporal <input class="rounded border p-2" name="password" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+            <label class="grid gap-1">Contraseña temporal <input class="rounded border p-2" name="password" type="password" minlength="8" maxlength="20" autocomplete="new-password" required></label>
             <div><button class="button button-primary">Crear cuenta</button></div>
         </form>
     </section>
