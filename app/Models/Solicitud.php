@@ -19,6 +19,8 @@ class Solicitud extends Model
     protected $fillable = [
         'id_usuario',
         'id_espacio',
+        'id_bien_espacio',
+        'bien_reportado',
         'ubicacion_libre',
         'huella_reporte',
         'id_categoria',

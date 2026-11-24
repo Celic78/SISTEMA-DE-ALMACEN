@@ -13,8 +13,10 @@ use App\Models\OrdenTrabajo;
 use App\Models\Solicitud;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CoordinacionService
 {
@@ -22,6 +24,8 @@ class CoordinacionService
      * Threshold amount in MXN triggering mandatory coordinator approval.
      */
     public const LIMITE_PRESUPUESTO_APROBACION = 15000.00;
+
+    public const ESTADOS_ORDEN_VINCULABLE = ['abierta', 'requiere_aprobacion', 'asignada', 'aprobada', 'en_proceso', 'en_espera', 'en_pruebas'];
 
     /**
      * High-risk operational keywords requiring special sign-off.
@@ -97,6 +101,80 @@ class CoordinacionService
 
             return $afectadas;
         });
+    }
+
+    public function vincularDuplicado(int $idOrdenDuplicada, int $idPrincipal, User $coordinador, string $campo): void
+    {
+        DB::transaction(function () use ($idOrdenDuplicada, $idPrincipal, $coordinador, $campo): void {
+            $orden = OrdenTrabajo::whereKey($idOrdenDuplicada)->lockForUpdate()->first();
+            $solicitudes = Solicitud::whereKey([$orden?->id_solicitud, $idPrincipal])
+                ->orderBy('id_solicitud')->lockForUpdate()->get()->keyBy('id_solicitud');
+            $principal = $solicitudes->get($idPrincipal);
+            $duplicado = $solicitudes->get($orden?->id_solicitud);
+
+            if (! $principal || ! $duplicado
+                || ! $this->candidatosParaVincular([$duplicado->getKey()])->where('principal.id_solicitud', $principal->getKey())->exists()) {
+                throw ValidationException::withMessages([
+                    $campo => 'Elige un duplicado abierto y sin vínculos, de la misma ubicación y categoría que el reporte principal activo.',
+                ]);
+            }
+
+            $this->consolidarReportesDuplicados($principal, [$duplicado->getKey()], $coordinador);
+        }, 3);
+    }
+
+    public function desvincularDuplicado(OrdenTrabajo $orden, Solicitud $duplicado, User $coordinador): void
+    {
+        DB::transaction(function () use ($orden, $duplicado, $coordinador): void {
+            $ordenDuplicada = $duplicado->ordenTrabajo()->lockForUpdate()->first();
+            $reporte = Solicitud::whereKey($duplicado->getKey())->lockForUpdate()->firstOrFail();
+
+            if ((int) $reporte->id_solicitud_padre !== (int) $orden->id_solicitud
+                || $ordenDuplicada?->estado !== 'cancelada_duplicada') {
+                throw ValidationException::withMessages(['duplicado' => 'El reporte ya no pertenece a este grupo o su orden cambió.']);
+            }
+
+            $reporte->update(['id_solicitud_padre' => null, 'estado' => 'pendiente']);
+            $ordenDuplicada->update(['estado' => 'abierta']);
+
+            BitacoraSistema::create([
+                'id_usuario' => $coordinador->getKey(),
+                'accion' => 'DESVINCULACION_DUPLICADO',
+                'descripcion' => json_encode([
+                    'id_solicitud_padre' => $orden->id_solicitud,
+                    'id_solicitud' => $reporte->getKey(),
+                ], JSON_THROW_ON_ERROR),
+                'fecha' => now(),
+            ]);
+        });
+    }
+
+    public function candidatosParaVincular(?array $idsOrigen = null): Builder
+    {
+        return DB::table('solicitudes as principal')
+            ->join('solicitudes as origen', function ($union): void {
+                $union->on('principal.id_categoria', '=', 'origen.id_categoria')
+                    ->on('principal.id_solicitud', '<>', 'origen.id_solicitud');
+            })
+            ->join('ordenes_trabajo as orden_origen', 'orden_origen.id_solicitud', '=', 'origen.id_solicitud')
+            ->where('orden_origen.estado', 'abierta')
+            ->whereNull('origen.id_solicitud_padre')
+            ->whereNotExists(fn ($hijas) => $hijas->selectRaw('1')->from('solicitudes as hija')
+                ->whereColumn('hija.id_solicitud_padre', 'origen.id_solicitud'))
+            ->join('ordenes_trabajo as orden_principal', 'orden_principal.id_solicitud', '=', 'principal.id_solicitud')
+            ->whereIn('orden_principal.estado', self::ESTADOS_ORDEN_VINCULABLE)
+            ->when($idsOrigen !== null, fn ($query) => $query->whereIn('origen.id_solicitud', $idsOrigen))
+            ->whereNull('principal.id_solicitud_padre')
+            ->where(fn ($bien) => $bien->whereNull('principal.id_bien_espacio')
+                ->orWhereNull('origen.id_bien_espacio')
+                ->orWhereColumn('principal.id_bien_espacio', 'origen.id_bien_espacio'))
+            ->where(function ($ubicacion): void {
+                $ubicacion->whereColumn('principal.id_espacio', 'origen.id_espacio')
+                    ->orWhere(function ($historica): void {
+                        $historica->where(fn ($sinCatalogo) => $sinCatalogo->whereNull('principal.id_espacio')->orWhereNull('origen.id_espacio'))
+                            ->whereRaw("NULLIF(LOWER(TRIM(principal.ubicacion_libre)), '') = LOWER(TRIM(origen.ubicacion_libre))");
+                    });
+            });
     }
 
     /**
@@ -268,17 +346,24 @@ class CoordinacionService
         User $coordinador,
         float $montoEstimado = 0.00,
         bool $esAltoRiesgo = false,
-        bool $costoExtra = false
+        bool $costoExtra = false,
+        float $montoExtra = 0.00,
+        ?User $tecnicoApoyo = null,
+        ?string $nombreTecnicoApoyo = null
     ): OrdenTrabajo {
-        return DB::transaction(function () use ($orden, $tecnico, $coordinador, $montoEstimado, $esAltoRiesgo, $costoExtra): OrdenTrabajo {
+        return DB::transaction(function () use ($orden, $tecnico, $coordinador, $montoEstimado, $esAltoRiesgo, $costoExtra, $montoExtra, $tecnicoApoyo, $nombreTecnicoApoyo): OrdenTrabajo {
+            $montoEstimado = round($montoEstimado + $montoExtra, 2);
             $descripcion = $orden->solicitud?->descripcion_falla;
-            $requiereAprobacion = $costoExtra || $this->evaluarRequiereAprobacion($montoEstimado, $esAltoRiesgo, $descripcion);
+            $requiereAprobacion = $costoExtra || $montoExtra > 0 || $this->evaluarRequiereAprobacion($montoEstimado, $esAltoRiesgo, $descripcion);
 
             $estadoAnterior = $orden->estado;
             $nuevoEstado = $requiereAprobacion ? 'requiere_aprobacion' : 'asignada';
 
             $orden->update([
                 'id_tecnico' => $tecnico->id,
+                'id_tecnico_apoyo' => $tecnicoApoyo?->getKey(),
+                'monto_extra' => $montoExtra,
+                'nombre_tecnico_apoyo' => $nombreTecnicoApoyo,
                 'fecha_asignacion' => now(),
                 'monto_estimado' => $montoEstimado,
                 'requiere_aprobacion' => $requiereAprobacion,
@@ -306,6 +391,9 @@ class CoordinacionService
                     'id_tecnico' => $tecnico->id,
                     'requiere_aprobacion' => $requiereAprobacion,
                     'monto_estimado' => $montoEstimado,
+                    'monto_extra' => $montoExtra,
+                    'id_tecnico_apoyo' => $tecnicoApoyo?->getKey(),
+                    'nombre_tecnico_apoyo' => $nombreTecnicoApoyo,
                 ], JSON_UNESCAPED_UNICODE),
                 'fecha' => now(),
             ]);

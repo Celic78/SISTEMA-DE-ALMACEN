@@ -41,6 +41,14 @@ class Espacio extends Model
     /**
      * Get the solicitudes for this espacio.
      */
+    public function bienes(): HasMany
+    {
+        return $this->hasMany(BienEspacio::class, 'id_espacio');
+    }
+
+    /**
+     * Get the solicitudes for the espacio.
+     */
     public function solicitudes(): HasMany
     {
         return $this->hasMany(Solicitud::class, 'id_espacio', 'id_espacio');

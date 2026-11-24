@@ -10,6 +10,7 @@ use App\Models\Material;
 use App\Models\MovimientoMaterial;
 use App\Models\OrdenTrabajo;
 use App\Models\SeccionAlmacen;
+use App\Models\Solicitud;
 use App\Models\User;
 use App\Services\CoordinacionService;
 use App\Services\SolicitudService;
@@ -281,7 +282,6 @@ class ExampleTest extends TestCase
         $this->actingAs($coordinadora)->post(route('coordinacion.ordenes.asignar', $orden), [
             'id_tecnico' => $tecnico->getKey(),
             'id_prioridad' => $orden->solicitud->id_prioridad,
-            'monto_estimado' => 100,
             'alto_riesgo' => '1',
         ])->assertSessionHasNoErrors();
         $this->assertSame('requiere_aprobacion', $orden->refresh()->estado);
@@ -319,6 +319,86 @@ class ExampleTest extends TestCase
         ])->assertSessionHasNoErrors();
         $this->assertSame('125.50', $orden->refresh()->costo_real);
         $this->get(route('coordinacion.index', ['estado' => 'terminadas']))->assertOk()->assertSee('$125.50');
+    }
+
+    public function test_coordination_manages_an_individual_inventory_item_in_its_space(): void
+    {
+        $this->seed();
+        $coordinadora = User::where('email_tipo', 'coordinador')->firstOrFail();
+        $alumna = User::where('email_tipo', 'alumno')->firstOrFail();
+        $edificio = Edificio::where('nombre', 'Edificio 1')->firstOrFail();
+        $espacio = $edificio->espacios()->where('nombre_espacio', 'Aula 1')->firstOrFail();
+        $otroEspacio = $edificio->espacios()->where('nombre_espacio', 'Aula 2')->firstOrFail();
+        $lista = route('coordinacion.bienes.index', $espacio);
+        $alta = route('coordinacion.bienes.store', $espacio);
+        $datos = [
+            'codigo_inventario' => 'a1-mesa-01',
+            'nombre' => 'Mesa de trabajo',
+            'tipo' => 'Mobiliario',
+            'ubicacion_interna' => 'Junto a la pared norte',
+            'marca' => 'Marca de ejemplo',
+            'modelo' => 'Mesa 01',
+            'numero_serie' => 'SER-123',
+            'estado' => 'bueno',
+            'observaciones' => 'Cubierta de madera.',
+        ];
+
+        $this->actingAs($alumna)->get($lista)->assertForbidden();
+        $this->post($alta, $datos)->assertForbidden();
+        $this->actingAs($coordinadora)->post($alta, $datos)->assertRedirect($lista)->assertSessionHasNoErrors();
+        $bien = $espacio->bienes()->sole();
+        $this->assertSame('A1-MESA-01', $bien->codigo_inventario);
+        $this->get($lista)->assertOk()->assertSee('Mesa de trabajo')->assertSee('Junto a la pared norte')
+            ->assertSee('SER-123')->assertSee('Cubierta de madera.');
+        $this->post(route('coordinacion.bienes.store', $otroEspacio), $datos)
+            ->assertSessionHasErrors('codigo_inventario');
+        $this->get(route('coordinacion.bienes.edit', [$otroEspacio, $bien]))->assertNotFound();
+        $this->patch(route('coordinacion.bienes.update', [$espacio, $bien]), array_replace($datos, ['estado' => 'baja']))
+            ->assertRedirect($lista)->assertSessionHasNoErrors();
+        $this->get($lista)->assertOk()->assertSee('Dado de baja');
+    }
+
+    public function test_report_uses_the_selected_inventory_unit_or_an_unlisted_item(): void
+    {
+        $this->seed();
+        Storage::fake('public');
+        $alumna = User::where('email_tipo', 'alumno')->firstOrFail();
+        $edificio = Edificio::where('nombre', 'Edificio 1')->firstOrFail();
+        $aula = $edificio->espacios()->where('nombre_espacio', 'Aula 1')->firstOrFail();
+        $otraAula = $edificio->espacios()->where('nombre_espacio', 'Aula 2')->firstOrFail();
+        $ficha = ['nombre' => 'Pupitre', 'tipo' => 'Mobiliario', 'ubicacion_interna' => 'Fila 1', 'estado' => 'bueno'];
+        $bien = $aula->bienes()->create($ficha + ['codigo_inventario' => 'PUP-01']);
+        $otroBien = $otraAula->bienes()->create($ficha + ['codigo_inventario' => 'PUP-02']);
+        $foto = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXwAAAABJRU5ErkJggg==');
+        $datos = [
+            'id_edificio' => $edificio->getKey(),
+            'id_espacio' => $aula->getKey(),
+            'fecha_hallazgo' => now('America/Mexico_City')->format('Y-m-d').'T10:00',
+            'descripcion_falla' => 'El pupitre tiene la cubierta floja.',
+        ];
+
+        $this->actingAs($alumna)->getJson(route('reportes.bienes', $aula))
+            ->assertOk()->assertJsonCount(1)->assertJsonPath('0.codigo_inventario', 'PUP-01');
+        $this->post(route('reportes.store'), $datos + [
+            'bien' => 'Pupitre',
+            'id_bien_espacio' => $otroBien->getKey(),
+            'evidencia' => UploadedFile::fake()->createWithContent('evidencia.png', $foto),
+        ])->assertSessionHasErrors('id_bien_espacio');
+        $this->post(route('reportes.store'), $datos + [
+            'bien' => 'Pupitre',
+            'id_bien_espacio' => $bien->getKey(),
+            'evidencia' => UploadedFile::fake()->createWithContent('evidencia.png', $foto),
+        ])->assertSessionHasNoErrors()->assertRedirectToRoute('reportes.index');
+        $this->assertDatabaseHas('solicitudes', ['id_bien_espacio' => $bien->getKey(), 'bien_reportado' => 'Pupitre · PUP-01']);
+
+        $this->post(route('reportes.store'), array_replace($datos, [
+            'descripcion_falla' => 'La banca tiene una pata suelta.',
+            'bien' => '__otro__',
+            'nombre_bien' => 'Banca',
+            'numero_bien' => '12',
+            'evidencia' => UploadedFile::fake()->createWithContent('evidencia.png', $foto),
+        ]))->assertSessionHasNoErrors()->assertRedirectToRoute('reportes.index');
+        $this->assertDatabaseHas('solicitudes', ['id_bien_espacio' => null, 'bien_reportado' => 'Banca · 12']);
     }
 
     public function test_coordination_can_add_a_building_and_lab_to_the_report_catalog(): void
@@ -372,7 +452,107 @@ class ExampleTest extends TestCase
         }
 
         $this->actingAs($coordinadora)->get(route('coordinacion.index', ['estado' => 'duplicados']))->assertOk()
-            ->assertSee('Iluminación intermitente')->assertSee('Una lámpara apagada')->assertDontSee('Falla en otra ubicación');
+            ->assertSee('Iluminación intermitente')->assertSee('Una lámpara apagada')->assertDontSee('Falla en otra ubicación')
+            ->assertSee('name="principal"', false);
+
+        [$principal, $duplicado, $otro] = Solicitud::orderBy('id_solicitud')->get()->all();
+        $ruta = route('coordinacion.ordenes.vincular', $duplicado->ordenTrabajo);
+        $bandeja = route('coordinacion.index', ['estado' => 'duplicados']);
+        $this->from($bandeja)->post($ruta, ['principal' => $otro->getKey()])
+            ->assertRedirect($bandeja)->assertSessionHasErrors('principal');
+        $this->assertNull($duplicado->refresh()->id_solicitud_padre);
+        $this->post($ruta, ['principal' => $principal->getKey()])
+            ->assertRedirect($bandeja)->assertSessionHasNoErrors();
+        $this->assertEquals($principal->getKey(), $duplicado->refresh()->id_solicitud_padre);
+        $this->assertSame('cancelada_duplicada', $duplicado->ordenTrabajo->estado);
+    }
+
+    public function test_coordination_reviews_and_separates_automatically_grouped_reports(): void
+    {
+        $this->seed();
+        $servicio = app(SolicitudService::class);
+        $solicitantes = User::where('email_tipo', 'alumno')->orderBy('id')->take(2)->get();
+        $coordinadora = User::where('email_tipo', 'coordinador')->firstOrFail();
+        $edificio = Edificio::where('nombre', 'Edificio 1')->firstOrFail();
+        $datos = [
+            'id_edificio' => $edificio->getKey(),
+            'ubicacion_libre' => 'Edificio 1 · Aula 1',
+            'id_espacio' => $edificio->espacios()->where('nombre_espacio', 'Aula 1')->firstOrFail()->getKey(),
+            'id_categoria' => CategoriaSolicitud::where('nombre_categoria', CategoriaSolicitud::INMUEBLE)->firstOrFail()->getKey(),
+        ];
+        $principal = $servicio->crearSolicitud($datos + ['descripcion_falla' => 'La puerta del aula no cierra.'], $solicitantes[0]);
+        $duplicado = $servicio->crearSolicitud($datos + ['descripcion_falla' => 'LA PUERTA  DEL AULA NO CIERRA.'], $solicitantes[1]);
+        $distinto = $servicio->crearSolicitud($datos + ['descripcion_falla' => 'La ventana del aula no abre.'], $solicitantes[1]);
+
+        $this->assertEquals($principal->getKey(), $duplicado->id_solicitud_padre);
+        $this->assertSame('cancelada_duplicada', $duplicado->ordenTrabajo->estado);
+        $this->assertNull($distinto->id_solicitud_padre);
+        $bandeja = route('coordinacion.index', ['estado' => 'duplicados']);
+        $separar = route('coordinacion.ordenes.desvincular', [$principal->ordenTrabajo, $duplicado]);
+
+        $this->actingAs($solicitantes[0])->delete($separar)->assertForbidden();
+        $this->actingAs($coordinadora)->get($bandeja)->assertOk()
+            ->assertSee('2 reportes de esta incidencia')->assertSee('LA PUERTA  DEL AULA NO CIERRA.')
+            ->assertSee('Separar reporte #'.$duplicado->getKey());
+        $otraOrden = route('coordinacion.ordenes.desvincular', [$distinto->ordenTrabajo, $duplicado]);
+        $this->from($bandeja)->delete($otraOrden)->assertRedirect($bandeja)->assertSessionHasErrors('duplicado');
+        $this->delete($separar)->assertRedirect($bandeja)->assertSessionHasNoErrors();
+
+        $duplicado->refresh();
+        $this->assertNull($duplicado->id_solicitud_padre);
+        $this->assertSame('pendiente', $duplicado->estado);
+        $this->assertSame('abierta', $duplicado->ordenTrabajo->estado);
+        $this->get($bandeja)->assertOk()->assertDontSee('2 reportes de esta incidencia')
+            ->assertSee('Agregar duplicado a este reporte');
+        $agregar = route('coordinacion.ordenes.duplicados.agregar', $principal->ordenTrabajo);
+        $this->post($agregar, ['duplicado' => $principal->ordenTrabajo->getKey()])
+            ->assertSessionHasErrors('duplicado');
+        $this->post($agregar, ['duplicado' => $distinto->ordenTrabajo->getKey()])
+            ->assertRedirect($bandeja)->assertSessionHasNoErrors();
+        $this->assertEquals($principal->getKey(), $distinto->refresh()->id_solicitud_padre);
+        $this->get($bandeja)->assertOk()
+            ->assertSee('2 reportes de esta incidencia')
+            ->assertSee('Separar reporte #'.$distinto->getKey());
+    }
+
+    public function test_coordination_can_assign_additional_cost_and_technical_support(): void
+    {
+        $this->seed();
+        $coordinadora = User::where('email_tipo', 'coordinador')->firstOrFail();
+        $tecnico = User::where('email_tipo', 'tecnico')->firstOrFail();
+        $reporte = app(SolicitudService::class)->crearSolicitud([
+            'ubicacion_libre' => 'Aula 1',
+            'id_categoria' => CategoriaSolicitud::where('nombre_categoria', CategoriaSolicitud::INMUEBLE)->firstOrFail()->getKey(),
+            'descripcion_falla' => 'La puerta del aula no cierra.',
+        ], $coordinadora);
+        $orden = $reporte->ordenTrabajo;
+        $asignar = route('coordinacion.ordenes.asignar', $orden);
+        $datos = [
+            'id_tecnico' => $tecnico->getKey(),
+            'id_prioridad' => $reporte->id_prioridad,
+            'costo_extra' => '1',
+            'tecnico_extra' => '1',
+        ];
+
+        $this->actingAs($coordinadora)->get(route('coordinacion.index'))->assertOk()
+            ->assertSee('name="monto_extra"', false)->assertSee('name="nombre_tecnico_apoyo"', false)
+            ->assertDontSee('name="monto_estimado"', false);
+        $this->post($asignar, $datos)
+            ->assertSessionHasErrors(['monto_extra', 'nombre_tecnico_apoyo']);
+        $this->assertSame('abierta', $orden->refresh()->estado);
+        $this->post($asignar, $datos + ['monto_extra' => '25.75', 'nombre_tecnico_apoyo' => 'Apoyo externo del plantel'])
+            ->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertDatabaseHas('ordenes_trabajo', [
+            'id_orden' => $orden->getKey(),
+            'id_tecnico_apoyo' => null,
+            'nombre_tecnico_apoyo' => 'Apoyo externo del plantel',
+            'monto_estimado' => '25.75',
+            'monto_extra' => '25.75',
+            'estado' => 'requiere_aprobacion',
+        ]);
+        $this->get(route('coordinacion.index'))->assertOk()
+            ->assertSee('Costo adicional: $25.75')->assertSee('Costo estimado total: $25.75');
+        $this->actingAs($tecnico)->get(route('cuadrillas.index'))->assertOk()->assertSee('Apoyo externo del plantel');
     }
 
     public function test_material_can_be_reserved_dispatched_once_and_partially_returned(): void

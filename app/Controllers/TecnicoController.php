@@ -43,7 +43,10 @@ class TecnicoController extends Controller
             default => ['asignada', 'aprobada', 'requiere_aprobacion'],
         };
 
-        $ordenes = OrdenTrabajo::with([
+        $asignaciones = OrdenTrabajo::where(fn ($consulta) => $consulta->where('id_tecnico', $tecnico->id)
+            ->orWhere('id_tecnico_apoyo', $tecnico->id));
+        $ordenes = (clone $asignaciones)->with([
+            'tecnico:id,name',
             'solicitud.espacio.edificio',
             'solicitud.categoria',
             'solicitud.prioridad',
@@ -52,16 +55,15 @@ class TecnicoController extends Controller
             'movimientosMaterial.material',
             'evidenciasCierre',
         ])
-            ->where('id_tecnico', $tecnico->id)
             ->whereIn('estado', $estados)
             ->latest('id_orden')
             ->paginate(15)->withQueryString();
 
         $conteoEstados = [
             'total' => $ordenes->total(),
-            'en_proceso' => OrdenTrabajo::where('id_tecnico', $tecnico->id)->where('estado', 'en_proceso')->count(),
-            'asignadas' => OrdenTrabajo::where('id_tecnico', $tecnico->id)->where('estado', 'asignada')->count(),
-            'resueltas' => OrdenTrabajo::where('id_tecnico', $tecnico->id)->whereIn('estado', ['resuelta', 'concluida'])->count(),
+            'en_proceso' => (clone $asignaciones)->where('estado', 'en_proceso')->count(),
+            'asignadas' => (clone $asignaciones)->where('estado', 'asignada')->count(),
+            'resueltas' => (clone $asignaciones)->whereIn('estado', ['resuelta', 'concluida'])->count(),
         ];
 
         if ($request->wantsJson()) {

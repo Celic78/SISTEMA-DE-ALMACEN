@@ -151,6 +151,10 @@ class SolicitudService
         $evidenciaUrl = $datos['evidencia_url'] ?? null;
 
         return DB::transaction(function () use ($datos, $usuario, $idEspacio, $idCategoria, $idPrioridad, $evidenciaUrl, $ubicacionLibre, $huella): Solicitud {
+            if ($idEspacio > 0) {
+                Espacio::whereKey($idEspacio)->lockForUpdate()->firstOrFail();
+            }
+
             if ($huella !== null) {
                 User::whereKey($usuario->getKey())->lockForUpdate()->firstOrFail();
 
@@ -163,16 +167,33 @@ class SolicitudService
                 $evidenciaUrl = $this->evidenciaService->almacenarEvidenciaSolicitud($datos['archivo_evidencia']);
             }
 
+            $descripcion = trim((string) $datos['descripcion_falla']);
+            $principal = null;
+            if ($idEspacio > 0) {
+                $normalizada = fn (string $texto): string => mb_strtolower(trim(preg_replace('/\s+/u', ' ', $texto) ?? $texto));
+                $principal = Solicitud::where('id_espacio', $idEspacio)
+                    ->where('id_categoria', $idCategoria)
+                    ->where('id_bien_espacio', $datos['id_bien_espacio'] ?? null)
+                    ->when(! isset($datos['id_bien_espacio']), fn ($query) => $query->where('bien_reportado', $datos['bien_reportado'] ?? null))
+                    ->whereNull('id_solicitud_padre')
+                    ->whereHas('ordenTrabajo', fn ($orden) => $orden->whereIn('estado', CoordinacionService::ESTADOS_ORDEN_VINCULABLE))
+                    ->orderBy('id_solicitud')->lockForUpdate()->get()
+                    ->first(fn (Solicitud $reporte) => $normalizada($reporte->descripcion_falla) === $normalizada($descripcion));
+            }
+
             $solicitud = Solicitud::create([
                 'id_usuario' => $usuario->id,
                 'id_espacio' => $idEspacio ?: null,
+                'id_bien_espacio' => $datos['id_bien_espacio'] ?? null,
+                'bien_reportado' => $datos['bien_reportado'] ?? null,
                 'ubicacion_libre' => $ubicacionLibre,
                 'huella_reporte' => $huella,
                 'id_categoria' => $idCategoria,
                 'id_prioridad' => $idPrioridad,
-                'descripcion_falla' => trim((string) $datos['descripcion_falla']),
+                'descripcion_falla' => $descripcion,
+                'id_solicitud_padre' => $principal?->getKey(),
                 'fecha_hallazgo' => $datos['fecha_hallazgo'] ?? now(),
-                'estado' => 'pendiente',
+                'estado' => $principal ? 'agrupada' : 'pendiente',
                 'evidencia_url' => $evidenciaUrl,
             ]);
 
@@ -182,7 +203,7 @@ class SolicitudService
                 'id_tecnico' => null,
                 'monto_estimado' => 0.00,
                 'requiere_aprobacion' => false,
-                'estado' => 'abierta',
+                'estado' => $principal ? 'cancelada_duplicada' : 'abierta',
             ]);
 
             // Auditoría en bitácora de sistema
@@ -193,6 +214,7 @@ class SolicitudService
                     'id_solicitud' => $solicitud->id_solicitud,
                     'id_espacio' => $idEspacio,
                     'id_categoria' => $idCategoria,
+                    'id_solicitud_padre' => $principal?->getKey(),
                 ], JSON_UNESCAPED_UNICODE),
                 'fecha' => now(),
             ]);

@@ -13,11 +13,13 @@
         @forelse ($ordenes as $orden)
             <article class="rounded-xl border border-slate-200 bg-white p-4">
                 <h2 class="font-bold">Orden #{{ $orden->getKey() }} · {{ $orden->solicitud?->ubicacion_libre ?? $orden->solicitud?->espacio?->nombre_espacio }}</h2>
+                @if ($orden->solicitud?->bien_reportado)<p>Bien afectado: {{ $orden->solicitud->bien_reportado }}</p>@endif
                 <p>{{ $orden->solicitud?->descripcion_falla }}</p>
                 @if ($orden->solicitud?->evidencia_url)
                     @include('partials.fotografia-evidencia', ['url' => $orden->solicitud->evidencia_url, 'etiqueta' => 'Ver fotografía del reporte'])
                 @endif
                 <p>Estado: {{ str_replace('_', ' ', $orden->estado) }}</p>
+                @if ($orden->nombre_tecnico_apoyo)<p>Técnico de apoyo: {{ $orden->nombre_tecnico_apoyo }}</p>@endif
                 @if ($orden->fecha_asignacion)<p>Asignación: {{ $orden->fecha_asignacion->format('d/m/Y H:i') }}</p>@endif
                 @if ($orden->fecha_inicio)<p>Inicio: {{ $orden->fecha_inicio->format('d/m/Y H:i') }}</p>@endif
                 @if ($orden->fecha_fin)<p>Terminado el <time datetime="{{ $orden->fecha_fin->toIso8601String() }}">{{ $orden->fecha_fin->format('d/m/Y H:i') }}</time></p>@endif
@@ -28,6 +30,9 @@
                         <a class="underline" href="{{ $evidencia->url_archivo }}">Evidencia de cierre {{ $loop->iteration }}</a>
                     @endif
                 @endforeach
+                @if ((int) $orden->id_tecnico_apoyo === (int) auth()->id())
+                    <p class="mt-2 font-bold">Asignación de apoyo · Responsable: {{ $orden->tecnico?->name ?? 'Sin asignar' }}</p>
+                @else
                 @if (in_array($orden->estado, ['asignada', 'aprobada'], true))
                     <form method="POST" action="{{ route('cuadrillas.estimar') }}" class="mt-3 flex flex-wrap items-end gap-2">
                         @csrf
@@ -75,6 +80,7 @@
                             <button class="button button-secondary">{{ $porAceptar ? 'Aceptar y enviar solicitud' : 'Enviar solicitud' }}</button>
                         </form>
                     </details>
+                @endif
                 @endif
             </article>
         @empty

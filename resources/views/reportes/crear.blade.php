@@ -35,6 +35,25 @@
                         @endforeach
                     </select>
                 </template>
+                <div data-report-assets data-url="{{ route('reportes.bienes', ['espacio' => '__espacio__']) }}">
+                    <label>Bien afectado
+                        <select name="bien" data-report-asset-name data-selected="{{ is_string(old('bien')) ? old('bien') : '' }}" required>
+                            <option value="">Primero selecciona un espacio</option>
+                        </select>
+                    </label>
+                    <label data-report-asset-unit-wrapper hidden>Número o código del bien
+                        <select name="id_bien_espacio" data-report-asset-unit data-selected="{{ is_scalar(old('id_bien_espacio')) ? old('id_bien_espacio') : '' }}" disabled></select>
+                    </label>
+                    <div data-report-asset-other hidden>
+                        <label>Nombre del bien o elemento
+                            <input name="nombre_bien" value="{{ old('nombre_bien') }}" maxlength="120" disabled>
+                        </label>
+                        <label>Número, si está marcado (opcional)
+                            <input name="numero_bien" value="{{ old('numero_bien') }}" maxlength="60" disabled>
+                        </label>
+                    </div>
+                    <p class="registration-notice" data-report-asset-status role="status" hidden></p>
+                </div>
                 <noscript>Activa JavaScript para seleccionar el espacio del reporte.</noscript>
             </div>
             <div data-step>
@@ -114,5 +133,5 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('mantresc-reporte.js').'?v=3' }}"></script>
+    <script src="{{ asset('mantresc-reporte.js').'?v=4' }}"></script>
 @endpush

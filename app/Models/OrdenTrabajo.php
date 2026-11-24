@@ -19,6 +19,9 @@ class OrdenTrabajo extends Model
     protected $fillable = [
         'id_solicitud',
         'id_tecnico',
+        'id_tecnico_apoyo',
+        'nombre_tecnico_apoyo',
+        'monto_extra',
         'monto_estimado',
         'costo_real',
         'justificacion_costo_real',
@@ -39,6 +42,7 @@ class OrdenTrabajo extends Model
     {
         return [
             'monto_estimado' => 'decimal:2',
+            'monto_extra' => 'decimal:2',
             'costo_real' => 'decimal:2',
             'requiere_aprobacion' => 'boolean',
             'fecha_inicio' => 'datetime',
@@ -61,6 +65,11 @@ class OrdenTrabajo extends Model
     public function tecnico(): BelongsTo
     {
         return $this->belongsTo(User::class, 'id_tecnico', 'id');
+    }
+
+    public function tecnicoApoyo(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'id_tecnico_apoyo');
     }
 
     /**

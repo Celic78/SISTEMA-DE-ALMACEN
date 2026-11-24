@@ -39,7 +39,17 @@
 .evidence-picker [data-camera-status]:empty { display: none; }
 .evidence-previews { display: flex; gap: .5rem; flex-wrap: wrap; }
 .evidence-photo { margin: .65rem 0; width: fit-content; max-width: 100%; }
-.evidence-photo a { display: grid; gap: .25rem; text-decoration: underline; }
+.evidence-photo-trigger {
+    display: grid;
+    gap: .25rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: start;
+    text-decoration: underline;
+    cursor: pointer;
+}
 .evidence-previews img,
 .evidence-photo img {
     display: block;
@@ -239,11 +249,12 @@ nav a[aria-current="page"] { background: var(--active); color: var(--active-text
 .workspace-avatar {
     display: grid;
     place-items: center;
-    width: 2rem;
-    height: 2rem;
+    flex: 0 0 auto;
+    width: 2.65rem;
+    height: 2.65rem;
     border-radius: 50%;
-    color: var(--avatar-ink);
-    background: var(--avatar-fill);
+    color: var(--button-text);
+    background: var(--button);
     font-weight: 700;
 }
 .workspace-topbar .theme-button, .site-access .theme-button {
@@ -495,12 +506,16 @@ nav a[aria-current="page"] { background: var(--active); color: var(--active-text
 .workspace-content {
     min-width: 0;
     padding: clamp(1rem, 3vw, 3rem);
+    padding-block-start: clamp(.35rem, .65vw, .65rem);
 }
 .workspace-topbar {
-    padding: .75rem 1rem;
-    border: 1px solid var(--line);
+    padding: .85rem 1rem;
+    border: 1px solid var(--air-force-blue);
+    border-inline-start: .35rem solid var(--ash-grey);
     border-radius: .55rem;
-    background: var(--topbar);
+    color: var(--beige);
+    background: var(--ink-black);
+    box-shadow: 0 3px 12px rgb(1 22 30 / 10%);
 }
 .workspace-content h1 { letter-spacing: -.035em; }
 .workspace-content :is(input, select, textarea) { max-width: 100%; }
@@ -523,7 +538,7 @@ nav a[aria-current="page"] { background: var(--active); color: var(--active-text
 }
 
 @media (max-width: 480px) {
-    .workspace-content { padding: .75rem; }
+    .workspace-content { padding: .5rem .75rem .75rem; }
     .workspace-topbar { gap: .5rem; padding: .65rem; }
     .workspace-topbar .theme-button { margin-inline-start: 0; }
     .workspace-content .access-card { margin-block: 1rem; }
@@ -617,16 +632,38 @@ nav a[aria-current="page"] { background: var(--active); color: var(--active-text
     gap: .1rem;
 }
 
+.workspace-identity strong {
+    color: var(--beige);
+    font-size: clamp(1.1rem, 2.2vw, 1.5rem);
+    font-weight: 750;
+    line-height: 1.2;
+}
+
 .workspace-identity span {
-    color: var(--muted);
-    font-size: .85rem;
+    justify-self: start;
+    padding: .08rem .45rem;
+    border-radius: .35rem;
+    color: var(--ink-black);
+    background: var(--ash-grey);
+    font-size: .8rem;
+    font-weight: 650;
 }
 
 .workspace-profile-link {
-    color: var(--muted);
+    padding: .35rem .65rem;
+    border: 1px solid var(--ash-grey);
+    border-radius: .35rem;
+    color: var(--beige);
     font-size: .85rem;
-    text-decoration: underline;
+    font-weight: 650;
+    text-decoration: none;
 }
+
+.workspace-profile-link:hover,
+.workspace-profile-link[aria-current="page"] { background: var(--ash-grey); color: var(--ink-black); }
+.workspace-topbar .theme-button { color: var(--beige); }
+.workspace-topbar :is(a, button):focus-visible { outline-color: var(--beige); }
+.workspace-topbar .workspace-avatar { background: var(--beige); color: var(--dark-teal); }
 
 .warehouse-table-wrap { max-width: 100%; overflow-x: auto; }
 
@@ -725,3 +762,30 @@ nav a[aria-current="page"] { background: var(--active); color: var(--active-text
 .report-calendar-option input:checked + span { background: var(--button); color: var(--button-text); font-weight: 750; }
 .report-calendar-option input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
 .report-calendar p { margin-block: .5rem .25rem; color: var(--muted); font-size: .85rem; }
+
+.assignment-option { min-width: 0; }
+.assignment-option-field { display: none; margin-top: .4rem; }
+.assignment-option:has(input[type="checkbox"]:checked) .assignment-option-field { display: block; }
+
+.evidence-viewer {
+    width: min(58rem, calc(100% - 1.5rem));
+    max-height: calc(100dvh - 1.5rem);
+    margin: auto;
+    padding: clamp(.75rem, 2vw, 1.25rem);
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: .75rem;
+    color: var(--ink);
+    background: var(--surface);
+}
+.evidence-viewer::backdrop { background: rgb(1 22 30 / 82%); }
+.evidence-viewer-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .65rem; margin-bottom: .75rem; }
+.evidence-photo .evidence-viewer img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 72dvh;
+    margin-inline: auto;
+    object-fit: contain;
+}

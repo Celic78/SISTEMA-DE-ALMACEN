@@ -23,6 +23,7 @@
             <article class="rounded-xl border border-slate-200 bg-white p-4">
                 <h2 class="font-bold">Reporte #{{ $solicitud->getKey() }} · {{ $solicitud->categoria?->nombre_categoria }}</h2>
                 <p>{{ $solicitud->ubicacion_libre ?? $solicitud->espacio?->nombre_espacio }}</p>
+                @if ($solicitud->bien_reportado)<p>Bien afectado: {{ $solicitud->bien_reportado }}</p>@endif
                 <p>{{ $solicitud->descripcion_falla }}</p>
                 @if ($solicitud->evidencia_url)
                     @include('partials.fotografia-evidencia', ['url' => $solicitud->evidencia_url, 'etiqueta' => 'Ver fotografía del reporte'])

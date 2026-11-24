@@ -2,6 +2,7 @@
 
 use App\Controllers\AlmacenController;
 use App\Controllers\AuthController;
+use App\Controllers\BienEspacioController;
 use App\Controllers\ReporteController;
 use App\Controllers\TecnicoController;
 use App\Controllers\UbicacionController;
@@ -70,6 +71,7 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
 
     Route::middleware('role:Alumno,Profesor,Coordinador')->group(function (): void {
         Route::get('/reportes/crear', [ReporteController::class, 'crear'])->name('reportes.create');
+        Route::get('/reportes/espacios/{espacio}/bienes', [ReporteController::class, 'bienes'])->name('reportes.bienes');
         Route::get('/reportes/nuevo', fn (): RedirectResponse => redirect()->route('reportes.create'));
         Route::get('/reportes/mis-reportes', [ReporteController::class, 'index'])->name('reportes.index');
         Route::get('/reportes/estado', [ReporteController::class, 'index'])->name('reportes.estado');
@@ -80,30 +82,31 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
         Route::get('/coordinacion/ubicaciones', [UbicacionController::class, 'index'])->name('coordinacion.ubicaciones');
         Route::post('/coordinacion/ubicaciones/edificios', [UbicacionController::class, 'guardarEdificio'])->name('coordinacion.ubicaciones.edificios');
         Route::post('/coordinacion/ubicaciones/espacios', [UbicacionController::class, 'guardarEspacio'])->name('coordinacion.ubicaciones.espacios');
+        Route::get('/coordinacion/espacios/{espacio}/bienes', [BienEspacioController::class, 'index'])->name('coordinacion.bienes.index');
+        Route::post('/coordinacion/espacios/{espacio}/bienes', [BienEspacioController::class, 'store'])->name('coordinacion.bienes.store');
+        Route::get('/coordinacion/espacios/{espacio}/bienes/{bien}/editar', [BienEspacioController::class, 'edit'])->name('coordinacion.bienes.edit');
+        Route::patch('/coordinacion/espacios/{espacio}/bienes/{bien}', [BienEspacioController::class, 'update'])->name('coordinacion.bienes.update');
         Route::post('/coordinacion/personal', [AuthController::class, 'crearPersonal'])->name('coordinacion.personal.store');
-        Route::get('/coordinacion', function (Request $request): View {
+        Route::get('/coordinacion', function (Request $request, CoordinacionService $servicio): View {
             $estados = match ($request->query('estado')) {
                 'nuevas' => ['abierta', 'requiere_aprobacion'],
                 'autorizaciones' => ['requiere_aprobacion'],
-                'duplicados' => ['abierta'],
                 'proceso' => ['asignada', 'aprobada', 'en_proceso', 'en_espera', 'en_pruebas'],
                 'terminadas' => ['resuelta', 'cerrada', 'concluida', 'cancelada', 'cancelada_duplicada', 'rechazada'],
                 default => null,
             };
             $ordenes = OrdenTrabajo::with([
-                'solicitud.espacio', 'solicitud.prioridad', 'solicitud' => fn ($query) => $query->withCount('solicitudesHijas'),
-                'tecnico', 'evidenciasCierre', 'reporteFinal', 'movimientosMaterial.material',
+                'solicitud.espacio', 'solicitud.prioridad', 'solicitud.solicitudesHijas.usuario:id,name', 'solicitud' => fn ($query) => $query->withCount('solicitudesHijas'),
+                'tecnico', 'tecnicoApoyo', 'evidenciasCierre', 'reporteFinal', 'movimientosMaterial.material',
             ])
                 ->when($estados, fn ($query) => $query->whereIn('estado', $estados))
-                ->when($request->query('estado') === 'duplicados', fn ($query) => $query->whereHas('solicitud', fn ($solicitud) => $solicitud
-                    ->whereNull('id_solicitud_padre')
-                    ->whereExists(fn ($candidatos) => $candidatos->selectRaw('1')->from('solicitudes as candidata')
-                        ->whereNull('candidata.id_solicitud_padre')
-                        ->whereColumn('candidata.id_solicitud', '<>', 'solicitudes.id_solicitud')
-                        ->whereColumn('candidata.id_categoria', 'solicitudes.id_categoria')
-                        ->where(fn ($ubicacion) => $ubicacion
-                            ->whereColumn('candidata.id_espacio', 'solicitudes.id_espacio')
-                            ->orWhereRaw('LOWER(TRIM(candidata.ubicacion_libre)) = LOWER(TRIM(solicitudes.ubicacion_libre))')))))
+                ->when($request->query('estado') === 'duplicados', fn ($query) => $query
+                    ->where(fn ($grupo) => $grupo->whereHas('solicitud.solicitudesHijas')
+                        ->orWhere(fn ($posibles) => $posibles->where('estado', 'abierta')
+                            ->whereHas('solicitud', fn ($solicitud) => $solicitud
+                                ->whereNull('id_solicitud_padre')
+                                ->whereExists($servicio->candidatosParaVincular()->selectRaw('1')
+                                    ->whereColumn('origen.id_solicitud', 'solicitudes.id_solicitud'))))))
                 ->latest('id_orden')->paginate(15)->withQueryString();
             $tecnicos = User::with(['roles' => fn ($query) => $query->where('nombre_rol', 'Tecnico')])
                 ->where('email_tipo', 'tecnico')->where('estado_registro', 'aprobado')->orderBy('name')->get();
@@ -137,7 +140,20 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
                 ->whereNotNull('ubicacion_libre')->whereNull('id_solicitud_padre')->with('categoria')
                 ->groupBy('ubicacion_libre', 'id_categoria')->havingRaw('COUNT(*) > 1')->orderByDesc('total')->limit(10)->get();
 
-            return view('coordinacion.dashboard', compact('ordenes', 'tecnicos', 'prioridades', 'metricas', 'porPrioridad', 'porUbicacion', 'recurrentes'));
+            $origenes = $ordenes->getCollection()->filter(fn (OrdenTrabajo $orden) => $orden->estado === 'abierta'
+                && $orden->solicitud?->id_solicitud_padre === null && $orden->solicitud?->solicitudes_hijas_count === 0);
+            $candidatosPorReporte = $servicio->candidatosParaVincular($origenes->pluck('id_solicitud')->all())
+                ->orderBy('principal.id_solicitud')->get([
+                    'origen.id_solicitud as origen_id', 'principal.id_solicitud', 'principal.descripcion_falla',
+                ])->groupBy('origen_id');
+
+            $duplicadosPorPrincipal = $servicio->candidatosParaVincular()
+                ->whereIn('principal.id_solicitud', $ordenes->getCollection()->pluck('id_solicitud')->all())
+                ->orderBy('origen.id_solicitud')->get([
+                    'principal.id_solicitud as principal_id', 'origen.id_solicitud', 'origen.descripcion_falla', 'orden_origen.id_orden',
+                ])->groupBy('principal_id');
+
+            return view('coordinacion.dashboard', compact('ordenes', 'tecnicos', 'prioridades', 'metricas', 'porPrioridad', 'porUbicacion', 'recurrentes', 'candidatosPorReporte', 'duplicadosPorPrincipal'));
         })->name('coordinacion.index');
 
         Route::patch('/coordinacion/ordenes/{orden}/costo', function (Request $request, OrdenTrabajo $orden): RedirectResponse {
@@ -171,17 +187,31 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
             $datos = $request->validate([
                 'id_tecnico' => ['required', 'integer'],
                 'id_prioridad' => ['required', 'integer', 'exists:matrices_prioridad,id_prioridad'],
-                'monto_estimado' => ['required', 'numeric', 'min:0', 'max:99999999'],
                 'alto_riesgo' => ['sometimes', 'boolean'],
                 'costo_extra' => ['sometimes', 'boolean'],
+                'monto_extra' => ['exclude_unless:costo_extra,1', 'required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:99999999'],
+                'tecnico_extra' => ['sometimes', 'boolean'],
+                'nombre_tecnico_apoyo' => ['exclude_unless:tecnico_extra,1', 'required', 'string', 'max:150'],
+            ], [
+                'monto_extra.required' => 'Captura el costo adicional.',
+                'nombre_tecnico_apoyo.required' => 'Escribe el nombre del técnico de apoyo.',
             ]);
             $tecnico = User::where('email_tipo', 'tecnico')->where('estado_registro', 'aprobado')->findOrFail($datos['id_tecnico']);
             abort_unless($tecnico->hasRol('Tecnico'), 422);
-            DB::transaction(function () use ($orden, $datos, $tecnico, $request, $servicio): void {
+            $montoExtra = (float) ($datos['monto_extra'] ?? 0);
+
+            DB::transaction(function () use ($orden, $datos, $tecnico, $montoExtra, $request, $servicio): void {
                 $actual = OrdenTrabajo::whereKey($orden->getKey())->lockForUpdate()->firstOrFail();
                 abort_unless($actual->estado === 'abierta' && $actual->solicitud->id_solicitud_padre === null, 409);
                 $actual->solicitud->update(['id_prioridad' => $datos['id_prioridad']]);
-                $servicio->asignarTecnicoAOrden($actual, $tecnico, $request->user(), (float) $datos['monto_estimado'], $request->boolean('alto_riesgo'), $request->boolean('costo_extra'));
+                $servicio->asignarTecnicoAOrden(
+                    $actual,
+                    $tecnico,
+                    $request->user(),
+                    esAltoRiesgo: $request->boolean('alto_riesgo'),
+                    montoExtra: $montoExtra,
+                    nombreTecnicoApoyo: $datos['nombre_tecnico_apoyo'] ?? null,
+                );
             });
 
             return back()->with('status', 'Asignación guardada.');
@@ -219,21 +249,21 @@ Route::middleware(['auth', RequirePersonalPassword::class])->group(function (): 
 
         Route::post('/coordinacion/ordenes/{orden}/vincular', function (Request $request, OrdenTrabajo $orden, CoordinacionService $servicio): RedirectResponse {
             $datos = $request->validate(['principal' => ['required', 'integer', 'exists:solicitudes,id_solicitud']]);
-            DB::transaction(function () use ($orden, $datos, $request, $servicio): void {
-                $actual = OrdenTrabajo::whereKey($orden->getKey())->lockForUpdate()->firstOrFail();
-                $principal = Solicitud::whereKey($datos['principal'])->lockForUpdate()->firstOrFail();
-                abort_unless($actual->estado === 'abierta'
-                    && $actual->solicitud->id_solicitud_padre === null
-                    && $actual->solicitud->solicitudesHijas()->doesntExist()
-                    && $principal->id_solicitud_padre === null
-                    && $principal->getKey() !== $actual->id_solicitud, 422);
-                $total = $servicio->consolidarReportesDuplicados($principal, [$actual->id_solicitud], $request->user());
-                abort_unless($total === 1, 422);
-
-            });
+            $servicio->vincularDuplicado($orden->getKey(), (int) $datos['principal'], $request->user(), 'principal');
 
             return back()->with('status', 'Reporte vinculado.');
         })->name('coordinacion.ordenes.vincular');
+        Route::post('/coordinacion/ordenes/{orden}/duplicados', function (Request $request, OrdenTrabajo $orden, CoordinacionService $servicio): RedirectResponse {
+            $datos = $request->validate(['duplicado' => ['required', 'integer', 'exists:ordenes_trabajo,id_orden']]);
+            $servicio->vincularDuplicado((int) $datos['duplicado'], (int) $orden->id_solicitud, $request->user(), 'duplicado');
+
+            return back()->with('status', 'Reporte agregado al grupo de duplicados.');
+        })->name('coordinacion.ordenes.duplicados.agregar');
+        Route::delete('/coordinacion/ordenes/{orden}/duplicados/{duplicado}', function (OrdenTrabajo $orden, Solicitud $duplicado, CoordinacionService $servicio, Request $request): RedirectResponse {
+            $servicio->desvincularDuplicado($orden, $duplicado, $request->user());
+
+            return back()->with('status', 'Reporte separado. Su orden vuelve a estar abierta.');
+        })->name('coordinacion.ordenes.desvincular');
         Route::get('/coordinacion/avisos', function (): View {
             return view('coordinacion.avisos', [
                 'categorias' => CategoriaSolicitud::where('nombre_categoria', CategoriaSolicitud::INMUEBLE)->orderBy('nombre_categoria')->get(),

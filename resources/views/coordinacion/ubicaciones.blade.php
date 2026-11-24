@@ -52,7 +52,10 @@
                 <summary class="cursor-pointer font-bold">{{ $edificio->nombre }} · {{ $edificio->espacios->count() }} espacios</summary>
                 <ul class="mt-3 list-disc pl-5">
                     @forelse ($edificio->espacios->sortBy('nombre_espacio', SORT_NATURAL | SORT_FLAG_CASE) as $espacio)
-                        <li>{{ $espacio->nombre_espacio }} · {{ $espacio->tipo_espacio }}</li>
+                        <li class="mb-2">
+                            {{ $espacio->nombre_espacio }} · {{ $espacio->tipo_espacio }}
+                            <a class="underline" href="{{ route('coordinacion.bienes.index', $espacio) }}">Ver inventario ({{ $espacio->bienes_count }})</a>
+                        </li>
                     @empty
                         <li>Agrega un espacio para habilitar reportes en este edificio.</li>
                     @endforelse

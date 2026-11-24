@@ -6,8 +6,15 @@
     }
 @endphp
 <figure class="evidence-photo">
-    <a href="{{ $url }}" target="_blank" rel="noopener">
-        <img src="{{ $url }}" alt="{{ $etiqueta }}" loading="lazy">
+    <button type="button" class="evidence-photo-trigger" data-evidence-open aria-haspopup="dialog">
+        <img src="{{ $url }}" alt="" loading="lazy">
         <span>{{ $etiqueta }}</span>
-    </a>
+    </button>
+    <dialog class="evidence-viewer" aria-label="{{ $etiqueta }}">
+        <div class="evidence-viewer-header">
+            <strong>{{ $etiqueta }}</strong>
+            <button type="button" class="button button-secondary" data-evidence-close autofocus>Cerrar imagen</button>
+        </div>
+        <img src="{{ $url }}" alt="{{ $etiqueta }}" loading="lazy">
+    </dialog>
 </figure>

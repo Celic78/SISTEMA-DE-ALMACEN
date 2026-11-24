@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Panel') · SIRE-M</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <link rel="stylesheet" href="{{ asset('mantresc.css') }}">
+    <link rel="stylesheet" href="{{ asset('mantresc.css').'?v=visor-1' }}">
     <script src="{{ asset('mantresc-theme.js') }}"></script>
     @stack('styles')
 </head>
@@ -101,6 +101,7 @@
         </main>
     </div>
     <script src="{{ asset('mantresc-menu.js') }}" defer></script>
+    <script src="{{ asset('mantresc-visor.js') }}" defer></script>
     @stack('scripts')
 </body>
 </html>

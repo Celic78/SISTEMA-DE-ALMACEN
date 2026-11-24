@@ -5,6 +5,16 @@ if (panel) {
     let editing = false;
 
     panel.addEventListener('input', () => { editing = true; });
+    panel.addEventListener('change', event => {
+        const toggle = event.target;
+        if (!toggle.matches('.assignment-option input[type="checkbox"]')) return;
+
+        const field = toggle.closest('.assignment-option')?.querySelector('.assignment-option-field :is(input, select)');
+        if (!field) return;
+
+        field.disabled = !toggle.checked;
+        field.required = toggle.checked;
+    });
 
     window.setInterval(async () => {
         if (document.hidden || refreshing || editing || panel.contains(document.activeElement)) return;

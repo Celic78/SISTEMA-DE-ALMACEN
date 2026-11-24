@@ -16,7 +16,7 @@ class UbicacionController extends Controller
     public function index(): View
     {
         $plantel = Plantel::where('nombre', Plantel::PRINCIPAL)->first();
-        $edificios = $plantel?->edificios()->with('espacios')->orderBy('nombre')->get() ?? collect();
+        $edificios = $plantel?->edificios()->with(['espacios' => fn ($espacios) => $espacios->withCount('bienes')])->orderBy('nombre')->get() ?? collect();
 
         return view('coordinacion.ubicaciones', compact('edificios'));
     }

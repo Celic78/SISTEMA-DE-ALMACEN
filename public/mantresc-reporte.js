@@ -31,6 +31,7 @@
         space.replaceChildren(new Option(placeholder, ''));
         matching.forEach(option => space.add(new Option(option.dataset.spaceName, option.value)));
         space.value = matching.some(option => option.value === selected) ? selected : '';
+        space.dispatchEvent(new Event('change'));
     }
 
     function showKinds(selected = '') {
@@ -48,6 +49,67 @@
     building.addEventListener('change', () => showKinds());
     kind.addEventListener('change', () => showSpaces());
     showKinds(space.dataset.selected);
+
+    const assets = form.querySelector('[data-report-assets]');
+    const assetName = assets.querySelector('[data-report-asset-name]');
+    const unit = assets.querySelector('[data-report-asset-unit]');
+    const unitWrapper = assets.querySelector('[data-report-asset-unit-wrapper]');
+    const other = assets.querySelector('[data-report-asset-other]');
+    const otherFields = Array.from(other.querySelectorAll('input'));
+    const status = assets.querySelector('[data-report-asset-status]');
+    const otherValue = '__otro__';
+    let inventory = [];
+    let loadId = 0;
+
+    function showAssetUnits(selected = '') {
+        const isOther = assetName.value === otherValue;
+        other.hidden = !isOther;
+        otherFields.forEach(input => { input.disabled = !isOther; });
+        otherFields[0].required = isOther;
+
+        const matches = inventory.filter(item => item.nombre === assetName.value);
+        unitWrapper.hidden = matches.length === 0;
+        unit.disabled = matches.length === 0;
+        unit.required = matches.length > 0;
+        unit.replaceChildren(new Option('Selecciona el número o código', ''));
+        matches.forEach(item => unit.add(new Option(`${item.codigo_inventario} · ${item.ubicacion_interna}`, item.id)));
+        if (matches.length === 1) unit.value = unit.options[1].value;
+        if (matches.some(item => String(item.id) === selected)) unit.value = selected;
+    }
+
+    async function loadAssets(selectedName = '', selectedUnit = '') {
+        const requestId = ++loadId;
+        inventory = [];
+        status.hidden = true;
+        assetName.replaceChildren(new Option(space.value ? 'Cargando inventario…' : 'Primero selecciona un espacio', ''));
+        showAssetUnits();
+        if (!space.value) return;
+
+        try {
+            const response = await fetch(assets.dataset.url.replace('__espacio__', encodeURIComponent(space.value)), {
+                headers: { Accept: 'application/json' }
+            });
+            if (!response.ok || response.redirected) throw new Error('Inventario no disponible');
+            const items = await response.json();
+            if (requestId !== loadId) return;
+            inventory = items;
+        } catch {
+            if (requestId !== loadId) return;
+            status.textContent = 'No se pudo consultar el inventario. Puedes escribir el nombre y número del bien.';
+            status.hidden = false;
+        }
+
+        assetName.replaceChildren(new Option('Selecciona el bien afectado', ''));
+        for (const name of new Set(inventory.map(item => item.nombre))) assetName.add(new Option(name, name));
+        assetName.add(new Option('Otro bien o elemento no inventariado', otherValue));
+        if (Array.from(assetName.options).some(option => option.value === selectedName)) assetName.value = selectedName;
+        showAssetUnits(selectedUnit);
+    }
+
+    space.addEventListener('change', () => loadAssets());
+    assetName.addEventListener('change', () => showAssetUnits());
+    loadAssets(assetName.dataset.selected, unit.dataset.selected);
+
 
     const calendar = form.querySelector('[data-report-calendar]');
     calendar?.addEventListener('change', event => {

@@ -9,6 +9,7 @@ use App\Models\Espacio;
 use App\Models\Plantel;
 use App\Services\SolicitudService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -51,6 +52,16 @@ class ReporteController extends Controller
         ]);
     }
 
+    public function bienes(Espacio $espacio): JsonResponse
+    {
+        $espacio->loadMissing('edificio.plantel');
+        abort_unless($espacio->edificio?->plantel?->nombre === Plantel::PRINCIPAL, 404);
+
+        return response()->json($espacio->bienes()->where('estado', '!=', 'baja')
+            ->orderBy('nombre')->orderBy('codigo_inventario')
+            ->get(['id', 'nombre', 'codigo_inventario', 'ubicacion_interna']));
+    }
+
     public function guardar(Request $request): RedirectResponse
     {
         if ($request->has('hora_hallazgo')) {
@@ -63,6 +74,10 @@ class ReporteController extends Controller
         $datos = $request->validate([
             'id_edificio' => ['required', 'integer'],
             'id_espacio' => ['required', 'integer'],
+            'bien' => ['sometimes', 'required', 'string', 'max:120'],
+            'id_bien_espacio' => ['exclude_if:bien,__otro__', 'nullable', 'required_with:bien', 'integer'],
+            'nombre_bien' => ['exclude_unless:bien,__otro__', 'required', 'string', 'max:120'],
+            'numero_bien' => ['exclude_unless:bien,__otro__', 'nullable', 'string', 'max:60'],
             'descripcion_falla' => ['required', 'string', 'min:10', 'max:2000'],
             'fecha_hallazgo' => ['required', 'date_format:Y-m-d\TH:i'],
             'evidencia' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
@@ -91,12 +106,23 @@ class ReporteController extends Controller
             throw ValidationException::withMessages(['id_espacio' => 'Selecciona un espacio que pertenezca al edificio elegido.']);
         }
 
+        if (isset($datos['id_bien_espacio'])) {
+            $bien = $espacio->bienes()->where('estado', '!=', 'baja')->find($datos['id_bien_espacio']);
+            if (! $bien || (isset($datos['bien']) && $bien->nombre !== $datos['bien'])) {
+                throw ValidationException::withMessages(['id_bien_espacio' => 'Selecciona un bien activo del espacio elegido.']);
+            }
+            $datos['bien_reportado'] = $bien->nombre.' · '.$bien->codigo_inventario;
+        } elseif (isset($datos['nombre_bien'])) {
+            $datos['bien_reportado'] = $datos['nombre_bien'].(isset($datos['numero_bien']) ? ' · '.$datos['numero_bien'] : '');
+        }
+
         $datos['ubicacion_libre'] = $espacio->edificio->nombre.' · '.$espacio->nombre_espacio;
         $datos['id_categoria'] = CategoriaSolicitud::firstOrCreate(['nombre_categoria' => CategoriaSolicitud::INMUEBLE])->getKey();
         $archivo = $request->file('evidencia');
         $datos['fecha_hallazgo'] = Carbon::parse($datos['fecha_hallazgo'], 'America/Mexico_City')->format('Y-m-d H:i:s');
         $datos['huella_reporte'] = hash('sha256', json_encode([
             $espacio->getKey(),
+            $datos['id_bien_espacio'] ?? $datos['bien_reportado'] ?? null,
             (int) $datos['id_categoria'],
             $datos['descripcion_falla'],
             $datos['fecha_hallazgo'],
